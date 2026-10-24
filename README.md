@@ -34,6 +34,13 @@ Scene puts those signals back on the characters, as body language:
 | "Leo left the chat" | 🚪 They push the chair back and walk out. The seat stays empty |
 | "This message was deleted" | ✋ They clap a hand over their mouth mid-sentence |
 
+## Where it started
+
+- **Star Wars hologram calls.** People far apart still sit around one table and talk, like the [Shadow Council in *The Mandalorian* season 3](https://www.youtube.com/watch?v=9EuKI_R8SLs).
+- **Rukichi's "남자들의 단톡방" (the guys' group chat).** When people act a group chat out loud, one "left on read" turns into a sketch ([YouTube, 2.5M views](https://www.youtube.com/watch?v=Rr8CZr-3KgM)).
+- **An avatar you dressed yourself.** Scene puts both into the group chat you already use, with your character in the seat instead of your face. Gen Z cares about this: 56% of US/UK Gen Z say styling their avatar matters more than styling themselves (Roblox, 2023).
+- **Next stop: glasses.** On smart glasses the round table sits on your desk, which is about as close to a hologram call as it gets.
+
 ## Try it
 
 1. Read one line out loud so your avatar can speak in your voice. You can skip this.

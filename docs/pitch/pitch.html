@@ -151,13 +151,38 @@
   .hero-shot { position: relative; }
   .hero-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .hero-chip { position: absolute; top: 4mm; left: 50%; transform: translateX(-50%); background: rgba(58, 54, 50, 0.88); color: #fff; font-size: 8.4pt; font-weight: 800; padding: 1.1mm 3.2mm; border-radius: 4mm; white-space: nowrap; }
+  /* page 1: origin + real mobile shots */
+  .p1 .hero { margin-top: 4mm; }
+  .p1 h1 { font-size: 27pt; }
+  .p1 .hero-art { height: 50mm; }
+  .p1 .hero-shot img { object-position: center 25%; }
+  .p1 .lead { margin-top: 3mm; font-size: 9.6pt; line-height: 1.6; }
+  .p1 section { margin-top: 4.4mm; }
+  .p1 h2 { font-size: 13pt; }
+  .origin { display: grid; grid-template-columns: 50mm 50mm 1fr; gap: 4.5mm; margin-top: 2.6mm; align-items: start; }
+  .origin figure img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 2.5mm; display: block; }
+  .origin figcaption { margin-top: 1.4mm; font-size: 7.6pt; line-height: 1.4; color: #3b3644; }
+  .origin figcaption b { display: block; font-size: 8.2pt; color: var(--ink); }
+  .origin .list { margin-top: 0; gap: 1.6mm; }
+  .origin .list li { font-size: 7.9pt; line-height: 1.45; }
+  .p1 table { margin-top: 2mm; border-top: 1.5px solid var(--ink); }
+  .p1 td { padding: 1mm 3mm 1mm 0; font-size: 8.6pt; }
+  .p1 .bottom { grid-template-columns: repeat(3, 30mm) 1fr; gap: 4.5mm; margin-top: 2mm; }
+  .p1 .phone { width: 30mm; }
+  .p1 .shot { width: 30mm; height: 64.9mm; border-width: 1.3mm; border-radius: 4.5mm; background-size: cover; background-position: center top; }
+  .p1 .cap { margin-top: 1.4mm; font-size: 7.4pt; }
+  .p1 .try { height: 64.9mm; padding: 4mm 4mm 3.6mm; }
+  .p1 .try h3 { font-size: 10.5pt; }
+  .p1 .try ol { margin-top: 2.2mm; gap: 1.6mm; }
+  .p1 .try li { font-size: 8pt; }
+  .p1 .try .honest { font-size: 6.9pt; margin-top: 2mm; }
   .srcline { margin-top: 2.4mm; font-size: 6.4pt; color: var(--muted); line-height: 1.5; }
 </style>
 </head>
 <body>
 
 <!-- ============================== PAGE 1 ============================== -->
-<div class="page">
+<div class="page p1">
   <div class="top">
     <span class="mark"><i></i>Scene</span>
     <span>SCHMIDT 트랙 · 채팅창 다음의 인터페이스 · UJHS</span>
@@ -168,20 +193,39 @@
       <h1>단톡방이<br />원탁이 된다.</h1>
       <p class="sub">Group chats you can see.</p>
       <p class="lead">
-        채팅은 말만 남기고 관계의 신호를 지웁니다. 누가 지금 보고 있는지, 누가 읽고도 답을 안 하는지가 회색 숫자와
-        "Read 9:41" 한 줄로 쪼그라들어 있죠. <b>Scene에서는 채팅방이 원탁이 됩니다.</b> 보고 있는 사람은 앉아 있고,
-        안 보는 사람은 테이블에 엎드려 있습니다. 대화는 말풍선과 함께 소리로 들리고, <b>내 말은 내 목소리</b>로 합니다.
+        채팅은 누가 보고 있는지, 누가 읽고도 답을 안 하는지를 "Read 9:41" 한 줄로 지웁니다.
+        <b>Scene에서는 단톡방이 원탁이 됩니다.</b> 보는 친구는 앉아 있고, 안 보는 친구는 엎드려 있습니다. 내 말은 <b>내 목소리</b>로 합니다.
       </p>
     </div>
-
-    <div class="hero-art hero-shot"><img src="shots/00-hero.png" alt="실제 데모의 원탁: Maya와 Leo가 앉아 있다" /><span class="hero-chip">Read 6:03 PM</span></div>
+    <div class="hero-art hero-shot"><img src="shots/00-hero.png" alt="실제 데모: 읽씹한 Leo에게 Maya가 말한다" /></div>
   </div>
+
+  <section>
+    <p class="eyebrow">시작</p>
+    <h2>홀로그램 회의와 단톡 콩트에서 출발했습니다</h2>
+    <div class="origin">
+      <figure>
+        <img src="shots/ref-starwars.jpg" alt="스타워즈 만달로리안의 홀로그램 회의" />
+        <figcaption><b>스타워즈의 홀로그램 통신</b>멀리 있는 사람도 한자리에 둘러앉아 대화한다</figcaption>
+        <span class="src">The Mandalorian 시즌 3 · YouTube</span>
+      </figure>
+      <figure>
+        <img src="shots/ref-rukichi.jpg" alt="루키치 남자들의 단톡방" />
+        <figcaption><b>루키치 〈남자들의 단톡방〉</b>단톡을 사람이 연기하니 읽씹 하나가 콩트가 된다</figcaption>
+        <span class="src">YouTube 루키치 · 몰아보기 조회수 250만</span>
+      </figure>
+      <ul class="list next">
+        <li><span><b>둘을 단톡방에.</b> 같이 있는 듯한 대화와 눈에 보이는 신호를 매일 쓰는 단톡방으로 가져왔다</span></li>
+        <li><span><b>사람 대신 내가 꾸민 아바타.</b> Gen&nbsp;Z는 꾸미기에 진심이다. 56%가 현실의 나보다 아바타 꾸미기가 더 중요하다고 답했다 (Roblox)</span></li>
+        <li><span><b>다음 무대는 글래스.</b> 스마트 글래스를 쓰면 원탁이 내 책상 위에 뜬다. 홀로그램 통신에 가장 가까운 화면이다</span></li>
+      </ul>
+    </div>
+  </section>
 
   <section>
     <p class="eyebrow">핵심 아이디어</p>
     <h2>채팅이 숨기던 신호가 몸짓이 됩니다</h2>
     <table>
-      <thead><tr><th>채팅에서는</th><th>Scene의 원탁에서는</th></tr></thead>
       <tbody>
         <tr><td>지금 누가 보고 있는지 알 수 없다</td><td><span class="em">🪑</span>보고 있는 사람만 앉아 있고, 나머지는 엎드려 있다</td></tr>
         <tr><td>"Read 9:41"만 뜨고 답이 없다</td><td><span class="em">👀</span>고개를 들어 쳐다보고는 다시 엎드린다</td></tr>
@@ -193,19 +237,19 @@
   </section>
 
   <section>
-    <p class="eyebrow">화면</p>
+    <p class="eyebrow">화면 · 실제 데모 (휴대폰)</p>
     <div class="bottom">
       <div class="phone">
         <div class="shot" style="background-image: url('shots/01-myroom.png')"></div>
-        <p class="cap"><b>마이룸</b>내 캐릭터와 방. 창밖은 실제 날씨</p>
+        <p class="cap"><b>마이룸</b>창밖은 실제 날씨</p>
       </div>
       <div class="phone">
         <div class="shot" style="background-image: url('shots/02-rooms.png')"></div>
-        <p class="cap"><b>채팅방 현황</b>끌어올리는 시트. 방마다 누가 앉아 있는지 보인다</p>
+        <p class="cap"><b>채팅방 현황</b>방마다 앉은 사람 표시</p>
       </div>
       <div class="phone">
         <div class="shot" style="background-image: url('shots/03-table.png')"></div>
-        <p class="cap"><b>원탁</b>읽씹은 바로 들킨다</p>
+        <p class="cap"><b>원탁</b>읽씹 순간, 얼어붙은 Maya</p>
       </div>
       <div class="try">
         <h3>90초 체험법</h3>
@@ -320,7 +364,7 @@
           <li><span><b>접속 상태가 드러나는 건 부담이다.</b><span class="ans">→ 숫자 대신 몸짓이면 같은 신호도 농담이 된다. 엎드리기를 '방해 금지'로 직접 고르게 한다.</span></span></li>
           <li><span><b>목소리는 민감한 데이터다.</b><span class="ans">→ 🎤 녹음은 기기 안에서만 재생한다. 목소리 등록은 선택이고, 하면 등록 문장과 입력한 말이 팀이 운영하는 음성 서버로 간다.</span></span></li>
         </ul>
-        <p class="honest"><b>로드맵:</b> 실시간 멀티유저 · 대화 가져오기 · 클립. <b>오늘 데모:</b> 목소리 등록, 마이룸, 채팅방 시트, 원탁 몸짓, 🎤 음성.</p>
+        <p class="honest"><b>로드맵:</b> 실시간 멀티유저 · 대화 가져오기 · 클립 · 스마트 글래스. <b>오늘 데모:</b> 목소리 등록, 마이룸, 채팅방 시트, 원탁 몸짓, 🎤 음성.</p>
       </div>
     </div>
   </section>
