@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { canRecord, startRecording, type Recorder } from "@/lib/recorder";
 import { unlockAudio } from "@/lib/player/audio";
 import { VOICE_LINE, cloningAvailable, enrollVoice, speakAs } from "@/lib/voice";
-import { IconMic, IconStop } from "@/components/icons";
+import { IconClose, IconMic, IconStop } from "@/components/icons";
 
 // First run: read one line out loud, and your avatar speaks your typed
 // messages in that voice. Every step can be skipped; nothing here can strand
@@ -90,18 +90,13 @@ export function VoiceSetup({ onFinish }: VoiceSetupProps) {
   };
 
   return (
-    <div className="voice-setup" role="dialog" aria-modal="true" aria-label="Set up your voice">
-      <header className="modal-bar">
-        <span />
-        <h2>Your voice</h2>
-        {step !== "done" ? (
-          <button className="text-btn strong" onClick={() => onFinish(null)}>
-            Skip
-          </button>
-        ) : (
-          <span />
-        )}
-      </header>
+    <div className="voice-popup" role="dialog" aria-modal="true" aria-label="Set up your voice">
+      <div className="voice-card">
+      {step !== "done" && step !== "cloning" && (
+        <button className="voice-close" aria-label="Skip for now" onClick={() => onFinish(null)}>
+          <IconClose />
+        </button>
+      )}
 
       <div className="voice-body">
         {step === "intro" && (
@@ -181,6 +176,12 @@ export function VoiceSetup({ onFinish }: VoiceSetupProps) {
         )}
 
         {note && step === "record" && <p className="voice-note">{note}</p>}
+        {step === "intro" && (
+          <button className="text-btn quiet" onClick={() => onFinish(null)}>
+            Not now
+          </button>
+        )}
+      </div>
       </div>
     </div>
   );

@@ -63,3 +63,11 @@ export function IconShuffle({ size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function IconClose({ size = 18 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
