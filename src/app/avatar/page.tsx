@@ -60,8 +60,8 @@ export default function Page() {
           {AVATAR_OPTIONS.glasses.map((g) => (
             <Chip key={g} on={cfg.glasses === g} onClick={() => set('glasses', g)}>{g}</Chip>
           ))}
-          <Chip on={cfg.bag} onClick={() => set('bag', !cfg.bag)}>bag</Chip>
-          <Chip on={false} onClick={() => setCfg(randomAvatar())}>🎲 random</Chip>
+          <Chip on={cfg.bag !== 'none'} onClick={() => set('bag', cfg.bag === 'none' ? 'fanny' : 'none')}>bag</Chip>
+          <Chip on={false} onClick={() => setCfg(randomAvatar(true))}>🎲 random</Chip>
         </Row>
       </div>
     </main>

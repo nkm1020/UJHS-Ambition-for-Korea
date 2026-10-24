@@ -14,12 +14,13 @@ import { WeatherWindow } from "./WeatherWindow";
 // My Room: the avatar standing in a small, quiet room. The bottom sheet
 // covers the lower fifth of the screen, so the home shot aims below the
 // figure to lift it into the open area between the header and the sheet.
-// With `focus` (editing the look) the camera dollies in on an S-curve until
-// the figure fills the space between the edit bar and the color panel, and
-// a horizontal drag turns the figure.
+// With `focus` (editing the look) the camera moves on an S-curve to set the
+// figure in the space between the edit bar and the wardrobe panel, and a
+// horizontal drag turns the figure.
 // The window shows today's real weather, and the room light follows it:
 // cooler under cloud, warm lamplight after dark. A friend's room is the same
 // space in their colours, with one thing lying around that is theirs.
+// The face is the expression picked in the wardrobe unless the caller sets one.
 
 // Only the plaster colours change between rooms; the wood, paneling, rug and
 // plant are the same furniture everywhere.
@@ -38,7 +39,9 @@ interface Shot {
 }
 
 const HOME: Shot = { pos: new THREE.Vector3(0.45, 1.7, 7.6), look: new THREE.Vector3(0, 0.5, 0) };
-const EDIT: Shot = { pos: new THREE.Vector3(0, 1.18, 4.9), look: new THREE.Vector3(0, 0.74, 0) };
+// The wardrobe panel covers the lower 40% of the screen, so the edit shot
+// aims low to set the figure (and a hat) in the space above it.
+const EDIT: Shot = { pos: new THREE.Vector3(0, 1.0, 7.7), look: new THREE.Vector3(0, -0.04, 0) };
 const ZOOM_S = 1.05;
 
 // S-curve: slow out, fast through the middle, slow in. Same curve as the room camera.
@@ -239,7 +242,7 @@ function RoomLights({ weather }: { weather: Weather | null }) {
   );
 }
 
-export default function HomeStage3D({ avatar, focus = false, look = MY_ROOM, face = "happy" }: AvatarStandProps) {
+export default function HomeStage3D({ avatar, focus = false, look = MY_ROOM, face }: AvatarStandProps) {
   const weather = useWeather();
   return (
     <Canvas
@@ -258,7 +261,7 @@ export default function HomeStage3D({ avatar, focus = false, look = MY_ROOM, fac
       <directionalLight position={[-3, 2.2, 1.5]} intensity={0.35} color="#dfe6ff" />
       <Room weather={weather} look={look} />
       <Turntable enabled={focus}>
-        <Avatar config={avatar} pose="idle" face={face} seed={7} />
+        <Avatar config={avatar} pose="idle" face={face ?? avatar.expression} seed={7} />
       </Turntable>
       <ContactShadows position={[0, 0.008, 0]} opacity={0.38} scale={4} blur={2.4} far={2} />
     </Canvas>

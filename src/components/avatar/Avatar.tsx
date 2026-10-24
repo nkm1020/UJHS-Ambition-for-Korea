@@ -3,10 +3,10 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AvatarConfig, FaceName, PoseName } from '@/lib/types';
-import { DEFAULT_AVATAR } from '@/lib/avatar';
+import { AvatarConfig, FaceName, HairName, PoseName } from '@/lib/types';
+import { DEFAULT_AVATAR, GOLD } from '@/lib/avatar';
 import {
-  ARM, BLUSH, EYE, HIP_Y, LEG, MOUTH_Y, SHOULDER,
+  ARM, BLUSH, CROWN_Y, EYE, HAIR_LIFT, HALO_Y, HIP_Y, LEG, MOUTH_Y, SHOULDER,
   avatarGeometries, mouthGeometry, placeOnFront,
 } from './shape';
 import { avatarMaterial } from './materials';
@@ -98,6 +98,7 @@ const BLUSH_SPOT = [placeOnFront(-BLUSH.x, BLUSH.y, 0.0052), placeOnFront(BLUSH.
 
 const SOLE_COLOR = '#F7F4EE';
 const INK = '#262636';
+const PAD_COLOR = '#3A3A48';
 
 export interface AvatarProps {
   config?: AvatarConfig;
@@ -141,6 +142,7 @@ export function Avatar({
   const eyeL = useRef<THREE.Group>(null);
   const eyeR = useRef<THREE.Group>(null);
   const mouth = useRef<THREE.Mesh>(null);
+  const halo = useRef<THREE.Group>(null);
 
   // 현재 관절값. 목표값으로 매 프레임 damp 되면서 따라간다 = 크로스페이드.
   const cur = useRef<Joints>({ ...BASE });
@@ -164,9 +166,28 @@ export function Avatar({
       glasses: avatarMaterial('plastic', config.glassesColor ?? '#F2669E'),
       bag: avatarMaterial('plastic', config.bagColor ?? '#7CC5E8'),
       zipper: avatarMaterial('plastic', config.bagColor === '#F2669E' ? '#FFFFFF' : '#F2669E'),
+      hair: avatarMaterial('clay', config.hairColor),
+      knit: avatarMaterial('clay', config.hatColor), // 비니
+      hatShell: avatarMaterial('plastic', config.hatColor), // 헤드폰
+      pad: avatarMaterial('clay', PAD_COLOR),
+      gold: avatarMaterial('gold', GOLD),
+      gem: avatarMaterial('plastic', '#F2669E'),
+      halo: avatarMaterial('glow', '#FFE28A'),
     }),
-    [config.body, config.skin, config.legs, config.shoes, config.face, config.glassesColor, config.bagColor],
+    [config.body, config.skin, config.legs, config.shoes, config.face, config.glassesColor, config.bagColor, config.hairColor, config.hatColor],
   );
+
+  // 비니는 머리카락을 눌러 덮는다. 단발은 비니 아래로 보이고, 곱슬은 삐져나온 것만,
+  // 삐죽 머리는 밑머리만 남는다. 꽁지·경단은 숨는다.
+  const hat = config.hat;
+  const underBeanie: Partial<Record<HairName, THREE.BufferGeometry>> = {
+    bob: G.hair.bob,
+    curls: G.hair.curlsUnderHat,
+    spiky: G.hair.spikyUnderHat,
+  };
+  const hairGeo =
+    config.hair === 'none' ? null : hat === 'beanie' ? (underBeanie[config.hair] ?? null) : G.hair[config.hair];
+  const lift = HAIR_LIFT[config.hair] ?? 0;
 
   const spec = FACES[face];
 
@@ -284,6 +305,9 @@ export function Avatar({
       eyeR.current.scale.set(spec.eyeSX, spec.wink ? 0.12 : spec.eyeSY * blinkSY, 1);
       eyeR.current.position.y = spec.browY ?? 0;
     }
+    // 후광은 머리 위에서 천천히 떠다닌다
+    if (halo.current) halo.current.position.y = HALO_Y + lift * 0.7 + Math.sin(t * 2.1) * 0.012;
+
     // 말할 때 입이 벌렁거린다 (TTS와 정확히 맞출 필요 없다)
     if (mouth.current) {
       const talk = talkLevel ? 1 + level * 2.2 : talking ? 1 + Math.abs(Math.sin(t * 11)) * 0.9 : 1;
@@ -361,12 +385,46 @@ export function Avatar({
           {config.glasses !== 'none' && (
             <mesh geometry={config.glasses === 'shutter' ? G.shutter : G.round} material={M.glasses} castShadow />
           )}
-          {config.bag && (
+          {config.bag === 'fanny' && (
             <>
               <mesh geometry={G.belt} material={M.bag} castShadow />
               <mesh geometry={G.pouch} material={M.bag} castShadow />
               <mesh geometry={G.zipper} material={M.zipper} />
             </>
+          )}
+          {config.bag === 'crossbody' && (
+            <>
+              <mesh geometry={G.crossStrap} material={M.bag} castShadow />
+              <mesh geometry={G.crossPouch} material={M.bag} castShadow />
+              <mesh geometry={G.crossButton} material={M.zipper} />
+            </>
+          )}
+          {config.bag === 'backpack' && (
+            <>
+              <mesh geometry={G.pack} material={M.bag} castShadow />
+              <mesh geometry={G.packStraps} material={M.bag} castShadow />
+              <mesh geometry={G.packZip} material={M.zipper} />
+            </>
+          )}
+
+          {hairGeo && <mesh geometry={hairGeo} material={M.hair} castShadow />}
+          {hat === 'beanie' && <mesh geometry={G.beanie} material={M.knit} castShadow />}
+          {hat === 'headphones' && (
+            <>
+              <mesh geometry={G.headphones} material={M.hatShell} castShadow />
+              <mesh geometry={G.headphonePads} material={M.pad} />
+            </>
+          )}
+          {hat === 'crown' && (
+            <group position={[0.01, CROWN_Y + lift, 0]} rotation={[0.05, 0, -0.1]}>
+              <mesh geometry={G.crown} material={M.gold} castShadow />
+              <mesh geometry={G.crownGem} material={M.gem} />
+            </group>
+          )}
+          {hat === 'halo' && (
+            <group ref={halo} position={[0, HALO_Y + lift * 0.7, 0]}>
+              <mesh geometry={G.halo} material={M.halo} />
+            </group>
           )}
 
           {arm(-1, shL, elL, handL)}

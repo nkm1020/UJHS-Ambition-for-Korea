@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ActionName, AvatarConfig, Presence } from "@/lib/types";
+import type { ActionName, AvatarConfig, FaceName, Presence } from "@/lib/types";
 
 // 2D stand-in avatar. Everything is sized in em, so the root font-size
 // (size / 10) scales the whole character.
@@ -26,6 +26,8 @@ interface FlatAvatarProps {
   look?: -1 | 0 | 1;
   talkId?: string;
   getTalkLevel?: (memberId: string) => number;
+  /** My Room's standing figure wears the picked expression; the table leaves it to the actions */
+  expression?: FaceName;
 }
 
 export function FlatAvatar({
@@ -37,6 +39,7 @@ export function FlatAvatar({
   look = 0,
   talkId,
   getTalkLevel,
+  expression,
 }: FlatAvatarProps) {
   const mouthRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +66,7 @@ export function FlatAvatar({
         `is-${presence}`,
         action ? `act-${action}` : "",
         eyesClosed ? "eyes-closed" : "",
+        expression ? `ex-${expression}` : "",
       ].join(" ")}
       style={
         {
@@ -74,6 +78,8 @@ export function FlatAvatar({
           "--shoes": avatar.shoes,
           "--glasses": avatar.glassesColor,
           "--bag": avatar.bagColor,
+          "--hair": avatar.hairColor,
+          "--hat": avatar.hatColor,
           "--look": look,
         } as React.CSSProperties
       }
@@ -86,7 +92,7 @@ export function FlatAvatar({
           </div>
         )}
         <div className="fa-body" />
-        {avatar.bag && <div className="fa-bag" />}
+        {avatar.bag !== "none" && <div className={`fa-bag b-${avatar.bag}`} />}
         <div className="fa-arm l" />
         <div className="fa-arm r" />
         <div className="fa-headwrap">
@@ -108,6 +114,8 @@ export function FlatAvatar({
               </div>
               <div className="fa-mouth" ref={mouthRef} />
             </div>
+            {avatar.hair !== "none" && avatar.hat !== "beanie" && <div className={`fa-hair h-${avatar.hair}`} />}
+            {avatar.hat !== "none" && <div className={`fa-hat t-${avatar.hat}`} />}
             <div className="fa-hand" />
           </div>
         </div>

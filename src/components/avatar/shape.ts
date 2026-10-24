@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type { HairName } from '@/lib/types';
 
 /* ──────────────────────────────────────────────────────────────
    아바타의 "모양"만 모아 둔 곳. 치수와 지오메트리를 여기서 정하고
@@ -79,13 +81,60 @@ export function surfaceFront(x: number, y: number, off = 0) {
 /** 곡면 위에 납작한 부품(눈·입·볼터치)을 붙일 위치와 방향. 로컬 +z가 법선, +y가 위쪽. */
 export function placeOnFront(x: number, y: number, off: number) {
   const { point, normal } = surfaceFront(x, y, off);
+  return { position: point, quaternion: frameAt(normal) };
+}
+
+function frameAt(normal: THREE.Vector3) {
   const right = new THREE.Vector3(0, 1, 0).cross(normal).normalize();
   const up = normal.clone().cross(right);
-  const quaternion = new THREE.Quaternion().setFromRotationMatrix(
-    new THREE.Matrix4().makeBasis(right, up, normal),
-  );
-  return { position: point, quaternion };
+  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, normal));
 }
+
+/* 머리 꼭대기는 거의 평평해서 높이 y로는 점을 고를 수 없다. LOOKUP은 옆선을
+   같은 길이로 나눈 점들이라, 인덱스(0 = 밑, ARC_N = 정수리)로 고르면
+   정수리까지 고르게 덮인다. 헤어·모자 껍데기는 이걸 쓴다. */
+const ARC_N = LOOKUP.length - 1;
+const ARC_PER_M = ARC_N / bodyCurve.getLength();
+
+/** 높이 y의 옆선 인덱스 (소수) */
+function arcIndexAtY(y: number): number {
+  if (y <= LOOKUP[0].y) return 0;
+  if (y >= LOOKUP[ARC_N].y) return ARC_N;
+  let lo = 0;
+  let hi = ARC_N;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (LOOKUP[mid].y < y) lo = mid;
+    else hi = mid;
+  }
+  return lo + (y - LOOKUP[lo].y) / (LOOKUP[hi].y - LOOKUP[lo].y || 1);
+}
+
+/** surfaceAt과 같지만 높이 대신 옆선 인덱스로 고른다. 정수리(ARC_N)에서도 법선이 위를 향한다. */
+function surfaceArc(phi: number, i: number, off = 0) {
+  const i0 = THREE.MathUtils.clamp(Math.floor(i), 0, ARC_N - 1);
+  const t = THREE.MathUtils.clamp(i - i0, 0, 1);
+  const a = LOOKUP[i0];
+  const b = LOOKUP[i0 + 1];
+  const pa = LOOKUP[Math.max(i0 - 1, 0)];
+  const pb = LOOKUP[Math.min(i0 + 2, ARC_N)];
+  const r = THREE.MathUtils.lerp(a.x, b.x, t);
+  const y = THREE.MathUtils.lerp(a.y, b.y, t);
+  // 옆선 접선 (dr, dy) → 바깥 법선 (dy, -dr)
+  const len = Math.hypot(pb.x - pa.x, pb.y - pa.y) || 1;
+  const nr = (pb.y - pa.y) / len;
+  const ny = -(pb.x - pa.x) / len;
+  const s = Math.sin(phi);
+  const c = Math.cos(phi);
+  const normal = new THREE.Vector3(nr * s, ny, (nr * c) / Z_SQUASH).normalize();
+  const point = new THREE.Vector3(r * s, y, r * c * Z_SQUASH).addScaledVector(normal, off);
+  return { point, normal };
+}
+
+const smooth = (e0: number, e1: number, x: number) => {
+  const t = THREE.MathUtils.clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+};
 
 /* ── 지오메트리. 모양이 색과 무관하니 전부 한 번만 만들고 모든 아바타가 공유한다. ── */
 
@@ -268,6 +317,277 @@ function bagGeometries() {
   return { belt: tubeAlong(belt, 0.02, true), pouch, zipper };
 }
 
+/** 크로스백: 오른쪽 어깨에서 왼쪽 엉덩이로 비스듬히 감기는 끈 + 엉덩이의 작은 가방 */
+function crossbodyGeometries() {
+  // 캐릭터 기준 오른쪽(-x)이 높고 왼쪽(+x) 엉덩이로 내려간다
+  const strapY = (phi: number) => 1.0 - 0.2 * Math.sin(phi);
+  const strap: THREE.Vector3[] = [];
+  for (let i = 0; i < 64; i++) {
+    const phi = (i / 64) * Math.PI * 2;
+    strap.push(surfaceAt(phi, strapY(phi), 0.012).point);
+  }
+  const at = surfaceAt(0.82, 0.8, 0.045);
+  const q = frameAt(at.normal);
+  const place = (g: THREE.BufferGeometry) => g.applyQuaternion(q).translate(at.point.x, at.point.y, at.point.z);
+  const pouch = place(new RoundedBoxGeometry(0.17, 0.14, 0.06, 3, 0.026));
+  const flap = place(new RoundedBoxGeometry(0.172, 0.06, 0.012, 2, 0.006).translate(0, 0.042, 0.03));
+  const button = place(new THREE.SphereGeometry(0.013, 10, 8).scale(1, 1, 0.6).translate(0, 0.014, 0.038));
+  return { crossStrap: tubeAlong(strap, 0.014, true), crossPouch: merge([pouch, flap]), crossButton: button };
+}
+
+/** (phi, y) 제어점을 매끈한 곡선으로 이은 뒤 곡면에 붙여 촘촘히 따라가는 점들 */
+function surfacePath(ctrl: [number, number][], off: number, closed: boolean, samples = 96) {
+  const curve = new THREE.CatmullRomCurve3(ctrl.map(([phi, y]) => new THREE.Vector3(phi, y, 0)), closed, 'centripetal');
+  const pts = curve.getSpacedPoints(samples);
+  if (closed) pts.pop(); // 닫힌 곡선은 끝점 = 시작점
+  return pts.map((p) => surfaceAt(p.x, p.y, off).point);
+}
+
+/** 백팩: 등에 메는 가방 + 앞주머니 + 손잡이, 가슴 앞으로 보이는 멜빵 두 줄 */
+function backpackGeometries() {
+  const y = 1.0;
+  const backZ = surfaceAt(Math.PI, y).point.z;
+  const cz = backZ + 0.05 - 0.085; // 등 곡면에 살짝 묻혀야 옆에서 틈이 안 보인다
+  const pack = new RoundedBoxGeometry(0.4, 0.44, 0.17, 4, 0.07).translate(0, y, cz);
+  const pocket = new RoundedBoxGeometry(0.27, 0.17, 0.06, 3, 0.026).translate(0, y - 0.09, cz - 0.1);
+  const handle = new THREE.TorusGeometry(0.05, 0.012, 8, 16, Math.PI).translate(0, y + 0.215, cz);
+  const zip: THREE.Vector3[] = [];
+  for (let i = 0; i <= 8; i++) zip.push(new THREE.Vector3(-0.1 + (i / 8) * 0.2, y - 0.02, cz - 0.131 - 0.004 * Math.sin((i / 8) * Math.PI)));
+  // 멜빵: 팔이 붙은 자리를 한 바퀴 감는다. 어깨 위 → 가슴 → 겨드랑이 밑 → 등(가방 속) → 다시 어깨 위
+  const straps = ([-1, 1] as const).map((sd) =>
+    tubeAlong(
+      surfacePath(
+        [[sd * 0.95, 1.31], [sd * 0.64, 1.12], [sd * 0.62, 1.0], [sd * 1.35, 0.95], [sd * 2.6, 0.95], [sd * 2.6, 1.18], [sd * 1.6, 1.36]],
+        0.014,
+        true,
+      ),
+      0.016,
+      true,
+    ),
+  );
+  return {
+    pack: merge([pack, pocket, handle]),
+    packStraps: merge(straps),
+    packZip: tubeAlong(zip, 0.0065),
+  };
+}
+
+/* ── 헤어 ── */
+
+/** 머리를 덮는 껍데기 (단발·비니). 아래 가장자리 높이 edge(phi)에서 정수리까지, 법선으로 off(t)만큼 띄운다. t: 0 = 가장자리, 1 = 정수리 */
+function headShell(edge: (phi: number) => number, off: (t: number) => number, segs = 72, rows = 24) {
+  const pos: number[] = [];
+  const nrm: number[] = [];
+  const idx: number[] = [];
+  for (let j = 0; j <= rows; j++) {
+    const t = j / rows;
+    for (let k = 0; k <= segs; k++) {
+      const phi = -Math.PI + (k / segs) * Math.PI * 2;
+      const i0 = arcIndexAtY(edge(phi));
+      const { point, normal } = surfaceArc(phi, i0 + (ARC_N - i0) * t, off(t));
+      pos.push(point.x, point.y, point.z);
+      nrm.push(normal.x, normal.y, normal.z);
+    }
+  }
+  for (let j = 0; j < rows; j++) {
+    for (let k = 0; k < segs; k++) {
+      const a = j * (segs + 1) + k;
+      const b = a + 1;
+      const c = a + segs + 1;
+      const d = c + 1;
+      idx.push(a, b, c, b, d, c);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setIndex(idx);
+  return g;
+}
+
+/** 껍데기 가장자리를 따라 도는 고리. 두께가 있어 보이게 한다 */
+function edgeRing(edge: (phi: number) => number, off: number, radius: number, lift = 0) {
+  const pts: THREE.Vector3[] = [];
+  for (let k = 0; k < 72; k++) {
+    const phi = -Math.PI + (k / 72) * Math.PI * 2;
+    pts.push(surfaceArc(phi, arcIndexAtY(edge(phi)) + lift * ARC_PER_M, off).point);
+  }
+  return tubeAlong(pts, radius, true);
+}
+
+/** 굵기가 줄어드는 관. 머리카락 가닥 */
+function taperedTube(points: THREE.Vector3[], r0: number, r1: number, segs = 20, radial = 8) {
+  const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+  const g = new THREE.TubeGeometry(curve, segs, 1, radial, false);
+  const pos = g.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i <= segs; i++) {
+    const c = curve.getPointAt(i / segs);
+    const r = THREE.MathUtils.lerp(r0, r1, i / segs);
+    for (let j = 0; j <= radial; j++) {
+      const k = i * (radial + 1) + j;
+      v.fromBufferAttribute(pos, k).sub(c).multiplyScalar(r).add(c);
+      pos.setXYZ(k, v.x, v.y, v.z);
+    }
+  }
+  return g;
+}
+
+/** 단발: 앞머리는 얼굴판 위에서, 옆·뒤는 귀 아래까지 */
+const bobEdge = (phi: number) => {
+  const a = Math.abs(phi);
+  return 1.6 - 0.3 * smooth(0.55, 1.6, a) + 0.01 * Math.sin(phi * 18) * (1 - smooth(0.3, 0.7, a));
+};
+
+/** 곱슬: 앞은 이마 위, 뒤로 갈수록 낮게 */
+const curlEdge = (phi: number) => 1.62 - 0.26 * smooth(0.55, 2.4, Math.abs(phi));
+
+/** 삐죽 머리: 짧게 깎은 밑머리 */
+const spikyEdge = (phi: number) => 1.58 - 0.18 * smooth(0.55, 2.4, Math.abs(phi));
+
+/** 비니 아랫단 */
+const beanieEdge = (phi: number) => 1.575 - 0.05 * smooth(0.6, 2.6, Math.abs(phi));
+
+function curlSpheres() {
+  const out: { p: THREE.Vector3; r: number; phi: number }[] = [];
+  const rows = 6;
+  for (let j = 0; j <= rows; j++) {
+    const t = j / rows;
+    const iSide = arcIndexAtY(curlEdge(Math.PI / 2));
+    const ring = LOOKUP[Math.round(iSide + (ARC_N - iSide) * t)].x;
+    const n = Math.max(1, Math.round((2 * Math.PI * ring) / 0.1));
+    for (let k = 0; k < n; k++) {
+      const phi = -Math.PI + ((k + (j % 2) * 0.5) / n) * Math.PI * 2;
+      const i0 = arcIndexAtY(curlEdge(phi));
+      const jitter = Math.abs(Math.sin(j * 12.9898 + k * 78.233) * 43758.5453) % 1;
+      out.push({ p: surfaceArc(phi, i0 + (ARC_N - i0) * t, 0.035).point, r: 0.06 + 0.014 * jitter, phi });
+    }
+  }
+  return out;
+}
+
+function hairGeometries() {
+  const tuft = merge(
+    [
+      [[0, 1.715, 0.02], [0.004, 1.8, 0.012], [0.036, 1.862, 0.042], [0.03, 1.874, 0.088]],
+      [[-0.018, 1.715, 0], [-0.042, 1.785, -0.012], [-0.08, 1.812, 0.018]],
+      [[0.02, 1.715, -0.022], [0.05, 1.776, -0.044], [0.088, 1.796, -0.024]],
+    ].map((pts, i) => taperedTube(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)), i ? 0.024 : 0.03, 0.005)),
+  );
+
+  const buns = merge(
+    ([-1, 1] as const).flatMap((sd) => {
+      const { point, normal } = surfaceArc(sd * 1.75, arcIndexAtY(1.65), 0.05);
+      const bun = new THREE.SphereGeometry(0.088, 24, 18).translate(point.x, point.y, point.z);
+      // 머리끈: 경단 밑동을 감는 고리
+      const tie = new THREE.TorusGeometry(0.072, 0.014, 8, 24)
+        .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal))
+        .translate(point.x - normal.x * 0.036, point.y - normal.y * 0.036, point.z - normal.z * 0.036);
+      return [bun, tie];
+    }),
+  );
+
+  const bobOff = (t: number) => 0.022 + 0.014 * (1 - t) ** 2;
+  const bob = merge([headShell(bobEdge, bobOff), edgeRing(bobEdge, bobOff(0) * 0.5, 0.02)]);
+
+  // 삐죽 머리: 짧은 밑머리 위로 뿔이 정수리를 둘러 세 겹. 정면에서도 여러 개가 보인다
+  const spikyOff = () => 0.018;
+  const spikyCap = merge([headShell(spikyEdge, spikyOff), edgeRing(spikyEdge, 0.009, 0.011)]);
+  const spikes: THREE.BufferGeometry[] = [];
+  for (const [t, n, h, turn] of [[1, 1, 0.15, 0], [0.62, 5, 0.15, 0.5], [0.24, 8, 0.12, 0]] as const) {
+    for (let k = 0; k < n; k++) {
+      const phi = -Math.PI + ((k + turn) / n) * Math.PI * 2;
+      const i0 = arcIndexAtY(spikyEdge(phi));
+      const { point, normal } = surfaceArc(phi, i0 + (ARC_N - i0) * t, 0.005);
+      const dir = normal.clone().add(new THREE.Vector3(0, 0.55, 0)).normalize(); // 위로 솟게
+      const len = h * (0.85 + 0.3 * ((Math.sin(k * 7.3 + t * 11) + 1) / 2));
+      spikes.push(
+        new THREE.ConeGeometry(0.06, len, 12)
+          .translate(0, len / 2, 0)
+          .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir))
+          .translate(point.x, point.y, point.z),
+      );
+    }
+  }
+
+  const curls = curlSpheres();
+  const ball = (c: { p: THREE.Vector3; r: number }) => new THREE.SphereGeometry(c.r, 12, 9).translate(c.p.x, c.p.y, c.p.z);
+
+  return {
+    tuft,
+    buns,
+    bob,
+    spiky: merge([spikyCap, ...spikes]),
+    // 비니를 쓰면 뿔은 눌리고 밑머리만 비니 아래로 보인다
+    spikyUnderHat: spikyCap,
+    curls: mergeGeometries(curls.map(ball)),
+    // 비니를 쓰면 비니 아래로 삐져나오는 곱슬만
+    curlsUnderHat: mergeGeometries(curls.filter((c) => c.p.y < beanieEdge(c.phi) - 0.03).map(ball)),
+  } satisfies Record<Exclude<HairName, 'none'> | 'curlsUnderHat' | 'spikyUnderHat', THREE.BufferGeometry>;
+}
+
+/** 크라운·후광을 머리카락 위로 올리는 높이 */
+export const HAIR_LIFT: Record<HairName, number> = { none: 0, tuft: 0, buns: 0, bob: 0.028, spiky: 0.06, curls: 0.09 };
+/** 크라운 밑단 높이 (머리카락 없을 때) */
+export const CROWN_Y = 1.712;
+export const HALO_Y = 1.95;
+
+/* ── 모자 ── */
+
+function hatGeometries() {
+  // 정수리 쪽으로 갈수록 머리에서 떠서 비니다운 돔이 된다 (머리 꼭대기가 납작해서)
+  const beanieOff = (t: number) => 0.035 + 0.11 * t ** 1.6;
+  const beanie = headShell(beanieEdge, beanieOff);
+  // 접어 올린 밑단: 고리 두 줄
+  const cuff = merge([edgeRing(beanieEdge, 0.036, 0.026), edgeRing(beanieEdge, 0.04, 0.026, 0.042)]);
+  const top = surfaceArc(0, ARC_N, beanieOff(1) + 0.045).point;
+  const pompom = new THREE.SphereGeometry(0.066, 20, 14).scale(1, 0.9, 1).translate(top.x, top.y, top.z);
+
+  // 헤드폰: 정수리를 넘는 밴드 + 양쪽 귀 컵 (컵 안쪽은 어두운 쿠션)
+  const cupY = 1.42;
+  const iBand = arcIndexAtY(cupY + 0.06);
+  const band: THREE.Vector3[] = [];
+  for (let k = 0; k <= 16; k++) band.push(surfaceArc(Math.PI / 2, iBand + (ARC_N - iBand) * (k / 16), 0.06).point);
+  for (let k = 15; k >= 0; k--) band.push(surfaceArc(-Math.PI / 2, iBand + (ARC_N - iBand) * (k / 16), 0.06).point);
+  const side = radiusAt(cupY);
+  const cups = ([-1, 1] as const).map((sd) =>
+    new THREE.CylinderGeometry(0.085, 0.085, 0.06, 28).rotateZ(Math.PI / 2).translate(sd * (side + 0.065), cupY, 0),
+  );
+  const pads = ([-1, 1] as const).map((sd) =>
+    new THREE.CylinderGeometry(0.074, 0.074, 0.03, 28).rotateZ(Math.PI / 2).translate(sd * (side + 0.026), cupY, 0),
+  );
+
+  // 왕관: 머리 위에 얹는 금테 + 뿔 다섯 + 끝의 구슬. 원점이 밑단 가운데
+  const crownParts: THREE.BufferGeometry[] = [new THREE.CylinderGeometry(0.152, 0.138, 0.075, 40, 1, true).translate(0, 0.0375, 0)];
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2;
+    const x = 0.148 * Math.sin(a);
+    const z = 0.148 * Math.cos(a);
+    crownParts.push(new THREE.ConeGeometry(0.03, 0.075, 12).translate(x, 0.075 + 0.0375, z));
+    crownParts.push(new THREE.SphereGeometry(0.015, 10, 8).translate(x, 0.155, z));
+  }
+
+  return {
+    beanie: merge([beanie, cuff, pompom]),
+    headphones: merge([tubeAlong(band, 0.02), ...cups]),
+    headphonePads: merge(pads),
+    crown: merge(crownParts),
+    crownGem: new THREE.SphereGeometry(0.022, 14, 10).scale(1, 1, 0.55).translate(0, 0.04, 0.146),
+    halo: new THREE.TorusGeometry(0.17, 0.02, 12, 48).rotateX(Math.PI / 2),
+  };
+}
+
+/** 색 없는 지오메트리끼리 합친다 (uv는 안 쓴다) */
+function merge(parts: THREE.BufferGeometry[]) {
+  return mergeGeometries(
+    parts.map((p) => {
+      const g = p.index ? p.toNonIndexed() : p;
+      g.deleteAttribute('uv');
+      return g;
+    }),
+  );
+}
+
 const SHOE = { x: 0.062, y: 0.068, z: 0.104 };
 
 function shoeUpperGeometry() {
@@ -313,6 +633,10 @@ function build() {
     shutter: shutterShadesGeometry(),
     round: roundGlassesGeometry(),
     ...bagGeometries(),
+    ...crossbodyGeometries(),
+    ...backpackGeometries(),
+    hair: hairGeometries(),
+    ...hatGeometries(),
   };
 }
 

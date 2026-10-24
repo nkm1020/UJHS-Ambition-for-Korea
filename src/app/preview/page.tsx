@@ -81,8 +81,22 @@ export default function Preview() {
           {AVATAR_OPTIONS.glasses.map((g) => (
             <Chip key={g} on={cfg.glasses === g} onClick={() => setCfg((v) => ({ ...v, glasses: g }))}>{g}</Chip>
           ))}
-          <Chip on={cfg.bag} onClick={() => setCfg((v) => ({ ...v, bag: !v.bag }))}>bag</Chip>
-          <Chip on={false} onClick={() => setCfg(randomAvatar())}>🎲</Chip>
+          <Chip on={false} onClick={() => setCfg(randomAvatar(true))}>🎲</Chip>
+        </Row>
+        <Row label="hair">
+          {AVATAR_OPTIONS.hair.map((h) => (
+            <Chip key={h} on={cfg.hair === h} onClick={() => setCfg((v) => ({ ...v, hair: h }))}>{h}</Chip>
+          ))}
+        </Row>
+        <Row label="hat">
+          {AVATAR_OPTIONS.hat.map((h) => (
+            <Chip key={h} on={cfg.hat === h} onClick={() => setCfg((v) => ({ ...v, hat: h }))}>{h}</Chip>
+          ))}
+        </Row>
+        <Row label="bag">
+          {AVATAR_OPTIONS.bag.map((b) => (
+            <Chip key={b} on={cfg.bag === b} onClick={() => setCfg((v) => ({ ...v, bag: b }))}>{b}</Chip>
+          ))}
         </Row>
       </div>
     </main>

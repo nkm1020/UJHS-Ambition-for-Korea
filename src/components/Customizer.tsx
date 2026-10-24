@@ -81,9 +81,9 @@ export function Customizer({
               </button>
             ))}
             <button
-              onClick={() => set('bag', !value.bag)}
+              onClick={() => set('bag', value.bag === 'none' ? 'fanny' : 'none')}
               className={`rounded-full px-3 py-1.5 text-[13px] font-semibold transition ${
-                value.bag ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'
+                value.bag !== 'none' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'
               }`}
             >
               가방
