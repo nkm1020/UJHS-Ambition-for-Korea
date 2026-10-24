@@ -71,3 +71,11 @@ export function IconClose({ size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function IconSparkle({ size = 15 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M12 3.5c.6 4.3 2.2 5.9 6.5 6.5-4.3.6-5.9 2.2-6.5 6.5-.6-4.3-2.2-5.9-6.5-6.5 4.3-.6 5.9-2.2 6.5-6.5zM18.5 15.5c.3 1.7.8 2.2 2.5 2.5-1.7.3-2.2.8-2.5 2.5-.3-1.7-.8-2.2-2.5-2.5 1.7-.3 2.2-.8 2.5-2.5z" />
+    </svg>
+  );
+}

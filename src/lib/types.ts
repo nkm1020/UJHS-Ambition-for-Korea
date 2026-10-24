@@ -85,6 +85,17 @@ export interface Room {
   members: Member[];
   script: Beat[];
   onUserMessage: Beat[][];
+  /** AI(Sonnet)가 연기하는 멤버. 있으면 내 메시지에 onUserMessage 대신 AI가 답한다 */
+  agentId?: string;
+  /** 있으면 대본이 끝난 뒤 원탁 위에 AI 요약을 띄운다. API가 실패하면 이 요약을 그대로 쓴다 */
+  catchUp?: CatchUp;
+}
+
+/** "안 읽은 사이 무슨 일이 있었나" AI 요약 */
+export interface CatchUp {
+  headline: string;
+  points: string[];
+  forYou: string; // 나한테 남은 일 (답해야 할 질문 등)
 }
 
 /* ── A의 재생기용: ActionName → 포즈 시퀀스 ─────────────────
@@ -182,4 +193,19 @@ export interface AvatarStandProps {
   avatar: AvatarConfig;
   /** 꾸미기 화면처럼 손가락으로 돌려볼 수 있게 */
   spin?: boolean;
+  /** 방 색과 소품. 없으면 내 방. 친구 방은 친구마다 다르다 */
+  look?: HomeLook;
+  /** 표정. 없으면 'happy' */
+  face?: FaceName;
+}
+
+/** 마이룸(과 친구 방)의 색. 소품 하나로 방 주인이 누군지 보이게 한다. */
+export interface HomeLook {
+  wall: string;
+  sideWall: string;
+  floor: string;
+  rug: string;
+  bench: string;
+  plant: string;
+  prop?: 'dumbbell' | 'pizza';
 }

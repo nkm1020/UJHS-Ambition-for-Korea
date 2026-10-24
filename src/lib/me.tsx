@@ -24,23 +24,23 @@ const Ctx = createContext<{
 /** 첫 방문부터 귀엽게 보이도록 랜덤 아바타로 시작한다. */
 const FALLBACK: Me = { avatar: DEFAULT_AVATAR, name: 'You', status: '오늘도 잘 부탁해 🌊' };
 
-export function MeProvider({ children }: { children: ReactNode }) {
-  const [me, setMe] = useState<Me>(FALLBACK);
-
-  // localStorage는 클라이언트에서만. SSR 하이드레이션 불일치를 피한다.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as Partial<Me>;
-        setMe({ ...FALLBACK, ...saved, avatar: { ...DEFAULT_AVATAR, ...saved.avatar } });
-        return;
-      }
-    } catch {
-      /* 손상된 값이면 그냥 새로 시작한다 */
+// App은 ssr: false로만 렌더되므로 첫 렌더에서 바로 localStorage를 읽는다.
+// effect에서 불러오면 저장 effect가 먼저 돌아 기본값으로 덮어쓴다.
+function loadMe(): Me {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<Me>;
+      return { ...FALLBACK, ...saved, avatar: { ...DEFAULT_AVATAR, ...saved.avatar } };
     }
-    setMe((m) => ({ ...m, avatar: randomAvatar() }));
-  }, []);
+  } catch {
+    /* 손상된 값이면 그냥 새로 시작한다 */
+  }
+  return { ...FALLBACK, avatar: randomAvatar() };
+}
+
+export function MeProvider({ children }: { children: ReactNode }) {
+  const [me, setMe] = useState<Me>(loadMe);
 
   useEffect(() => {
     try {

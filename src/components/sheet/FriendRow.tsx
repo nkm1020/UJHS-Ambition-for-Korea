@@ -4,16 +4,16 @@ import type { Friend } from "@/data/social";
 
 interface FriendRowProps {
   friend: Friend;
-  onOpen: (roomId: string) => void;
+  onSelect: (friend: Friend) => void;
 }
 
 // A friend: their head (up if watching, face-down if away), where they are,
-// and a tap opens your 1:1 chat with them.
+// and a tap visits their room.
 
-export function FriendRow({ friend, onOpen }: FriendRowProps) {
+export function FriendRow({ friend, onSelect }: FriendRowProps) {
   const watching = friend.presence === "watching";
   return (
-    <button className="chat-row friend-row" onClick={() => onOpen(friend.dmId)}>
+    <button className="chat-row friend-row" onClick={() => onSelect(friend)}>
       <span
         className={`head solo ${watching ? "" : "is-away"}`}
         style={{ "--c": friend.avatar.body } as React.CSSProperties}
@@ -28,7 +28,7 @@ export function FriendRow({ friend, onOpen }: FriendRowProps) {
           {watching ? `Watching in ${friend.where}` : `Away · last in ${friend.where}`}
         </span>
       </span>
-      <span className="row-action">Chat</span>
+      <span className="row-action">Visit</span>
     </button>
   );
 }

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { Room } from "@/lib/types";
 import type { Friend } from "@/data/social";
 import { useMe } from "@/lib/me";
+import { useWeather } from "@/lib/weather";
 import { AvatarStand } from "@/components/avatar";
 import { BottomSheet } from "@/components/sheet/BottomSheet";
 import { RoomCard } from "@/components/sheet/RoomCard";
 import { FriendRow } from "@/components/sheet/FriendRow";
+import { FriendRoom } from "./FriendRoom";
 import { Wardrobe } from "./Wardrobe";
 
 interface MyRoomProps {
@@ -20,10 +22,18 @@ interface MyRoomProps {
 
 type Tab = "chats" | "friends";
 
+// Enter finishes the edit. Skip it mid-composition so a Korean syllable
+// being typed isn't cut off.
+function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
+  if (e.key === "Enter" && !e.nativeEvent.isComposing) e.currentTarget.blur();
+}
+
 export function MyRoom({ rooms, dms, friends, visited, onOpen }: MyRoomProps) {
-  const { avatar, setAvatar } = useMe();
+  const { me, avatar, setAvatar, setName, setStatus } = useMe();
+  const weather = useWeather();
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState<Tab>("chats");
+  const [visiting, setVisiting] = useState<Friend | null>(null);
   const firstUnvisited = rooms.find((r) => !visited.includes(r.id))?.id;
   const watchingNow = friends.filter((f) => f.presence === "watching").length;
 
@@ -34,7 +44,36 @@ export function MyRoom({ rooms, dms, friends, visited, onOpen }: MyRoomProps) {
       </div>
 
       <header className="home-bar">
-        <span className="wordmark">Scene</span>
+        <div className="home-id">
+          <input
+            className="home-name"
+            value={me.name}
+            placeholder="Your name"
+            aria-label="Your name"
+            maxLength={16}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={(e) => setName(e.target.value.trim())}
+            onKeyDown={blurOnEnter}
+          />
+          {weather && (
+            <p className="home-weather">
+              {Math.round(weather.tempC)}° · {weather.label}
+            </p>
+          )}
+          <input
+            className="home-status"
+            value={me.status}
+            placeholder="Add a one-line intro"
+            aria-label="One-line intro"
+            maxLength={40}
+            autoComplete="off"
+            onChange={(e) => setStatus(e.target.value)}
+            onBlur={(e) => setStatus(e.target.value.trim())}
+            onKeyDown={blurOnEnter}
+          />
+        </div>
         <button className="glass-btn" onClick={() => setEditing(true)}>
           Edit look
         </button>
@@ -89,12 +128,14 @@ export function MyRoom({ rooms, dms, friends, visited, onOpen }: MyRoomProps) {
             </h3>
             <div className="list">
               {friends.map((f) => (
-                <FriendRow key={f.id} friend={f} onOpen={onOpen} />
+                <FriendRow key={f.id} friend={f} onSelect={setVisiting} />
               ))}
             </div>
           </>
         )}
       </BottomSheet>
+
+      {visiting && <FriendRoom friend={visiting} onBack={() => setVisiting(null)} onOpen={onOpen} />}
 
       {editing && (
         <Wardrobe

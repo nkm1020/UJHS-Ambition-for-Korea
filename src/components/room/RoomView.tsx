@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Room, StageAnchor } from "@/lib/types";
+import type { CatchUp, Room, StageAnchor } from "@/lib/types";
 import { useMe } from "@/lib/me";
-import { usePlayer } from "@/lib/player/usePlayer";
+import { usePlayer, type UserMessage } from "@/lib/player/usePlayer";
+import { createAgentChat, fetchCatchUp, replyBeats } from "@/lib/ai";
 import { setMuted } from "@/lib/player/audio";
 import { AvatarStage, STAGE_MODE } from "@/components/avatar";
 import { defaultAnchor } from "@/components/avatar/seatLayout";
 import { IconBack, IconSound } from "@/components/icons";
 import { BubbleLayer } from "./BubbleLayer";
+import { CatchUpCard } from "./CatchUpCard";
 import { Composer } from "./Composer";
 
 interface RoomViewProps {
@@ -26,11 +28,25 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
   const [doorOpen, setDoorOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageBox, setStageBox] = useState({ w: 0, h: 0 });
+  const [agent] = useState(() => (room.agentId ? createAgentChat() : null));
+  const [catchUp, setCatchUp] = useState<CatchUp | null>(null);
+  const [catchUpOpen, setCatchUpOpen] = useState(true);
 
   useEffect(() => {
     start();
     return stop;
   }, [start, stop]);
+
+  // Ask for the summary on entry, so it is ready by the time the replay ends.
+  useEffect(() => {
+    const fallback = room.catchUp;
+    if (!fallback) return;
+    const ctrl = new AbortController();
+    void fetchCatchUp(room.id, ctrl.signal).then((summary) => {
+      if (!ctrl.signal.aborted) setCatchUp(summary ?? fallback);
+    });
+    return () => ctrl.abort();
+  }, [room]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -41,6 +57,17 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  const send = (msg: UserMessage) => {
+    if (player.scriptDone) setCatchUpOpen(false); // make room for my bubble
+    const agentId = room.agentId;
+    if (!agent || !agentId) {
+      player.send(msg);
+      return;
+    }
+    const beats = agent.reply(msg.text).then((reply) => replyBeats(agentId, reply));
+    player.send(msg, { actorId: agentId, beats });
+  };
 
   const toggleMute = () => {
     setMuted(!muted);
@@ -104,6 +131,9 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
             )}
           </div>
         )}
+        {room.catchUp && player.scriptDone && (
+          <CatchUpCard summary={catchUp} open={catchUpOpen} onOpenChange={setCatchUpOpen} />
+        )}
         {player.caption && (
           <div key={player.caption.key} className="caption">
             {player.caption.text}
@@ -111,7 +141,7 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
         )}
       </div>
 
-      <Composer onSend={player.send} voiceId={voiceId} nudge={player.scriptDone && !player.busy} />
+      <Composer onSend={send} voiceId={voiceId} nudge={player.scriptDone && !player.busy} />
 
       {!doorOpen && (
         <div className="door" aria-hidden onAnimationEnd={(e) => e.target === e.currentTarget && setDoorOpen(true)}>

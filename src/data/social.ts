@@ -1,9 +1,8 @@
-import type { AvatarConfig, Room } from "@/lib/types";
-import { DEFAULT_AVATAR } from "@/lib/avatar";
-import { ROOMS } from "./rooms";
+import type { AvatarConfig, HomeLook, Room } from "@/lib/types";
+import { AI_ROOM, ROOMS } from "./rooms";
 
-// Friends and 1:1 chats, derived from the group rooms so there is one source
-// of people. Every friend gets a DM; its little scene matches their presence.
+// Friends, derived from the group rooms so there is one source of people.
+// The demo ships two chats: the group room and the 1:1 with the AI friend.
 
 export interface Friend {
   id: string;
@@ -11,74 +10,53 @@ export interface Friend {
   avatar: AvatarConfig;
   presence: "watching" | "away";
   where: string; // the group they were last seen in
-  dmId: string;
+  roomId: string; // their room's "Join" button opens that group
+  look?: HomeLook; // their room; without one it looks like yours
 }
 
-const firstSeen = new Map<string, { friend: Friend }>();
+// Each friend's room, so visiting reads as their place: Maya plans the pizza,
+// Leo "was at the gym".
+const LOOKS: Record<string, HomeLook> = {
+  maya: {
+    wall: "#efe1dc",
+    sideWall: "#e6d4ce",
+    floor: "#cdbab0",
+    rug: "#b8a5cf",
+    bench: "#7d6170",
+    plant: "#6c8a5a",
+    prop: "pizza",
+  },
+  leo: {
+    wall: "#dfe8e2",
+    sideWall: "#d3ded7",
+    floor: "#bfae94",
+    rug: "#7fa292",
+    bench: "#56646e",
+    plant: "#4d7a4a",
+    prop: "dumbbell",
+  },
+};
+
+const firstSeen = new Map<string, Friend>();
 for (const room of ROOMS) {
   for (const m of room.members) {
     if (m.id === "me" || firstSeen.has(m.id)) continue;
     firstSeen.set(m.id, {
-      friend: {
-        id: m.id,
-        name: m.name,
-        avatar: m.avatar,
-        presence: m.startsAs === "watching" ? "watching" : "away",
-        where: room.title,
-        dmId: `dm-${m.id}`,
-      },
+      id: m.id,
+      name: m.name,
+      avatar: m.avatar,
+      presence: m.startsAs === "watching" ? "watching" : "away",
+      where: room.title,
+      roomId: room.id,
+      look: LOOKS[m.id],
     });
   }
 }
 
-export const FRIENDS: Friend[] = [...firstSeen.values()]
-  .map((x) => x.friend)
-  .sort((a, b) => (a.presence === b.presence ? 0 : a.presence === "watching" ? -1 : 1));
+export const FRIENDS: Friend[] = [...firstSeen.values()].sort((a, b) =>
+  a.presence === b.presence ? 0 : a.presence === "watching" ? -1 : 1,
+);
 
-function dmFor(f: Friend): Room {
-  const away = f.presence === "away";
-  return {
-    id: f.dmId,
-    kind: "dm",
-    title: f.name,
-    emoji: "",
-    preview: away ? "Read 2:14 PM" : "hey 👋 you there?",
-    unread: away ? 0 : 1,
-    members: [
-      { id: f.id, name: f.name, avatar: f.avatar, seat: 0, startsAs: f.presence },
-      { id: "me", name: "You", avatar: DEFAULT_AVATAR, seat: 2, startsAs: "watching" },
-    ],
-    script: away
-      ? [
-          { actorId: "me", action: "walk_in" },
-          { actorId: f.id, action: "read_ignore", caption: "Read 2:14 PM" },
-          { actorId: f.id, action: "typing_stop", caption: `${f.name} is typing…` },
-        ]
-      : [
-          { actorId: "me", action: "walk_in" },
-          { actorId: f.id, action: "talk", text: "hey 👋 you there?" },
-          { actorId: f.id, action: "heart" },
-        ],
-    onUserMessage: away
-      ? [
-          [{ actorId: f.id, action: "read_ignore", caption: "Read" }],
-          [
-            { actorId: f.id, action: "startle_up", caption: "2 hours later" },
-            { actorId: f.id, action: "talk", text: "sorry!! was asleep" },
-          ],
-          [{ actorId: f.id, action: "laugh" }],
-        ]
-      : [
-          [
-            { actorId: f.id, action: "laugh" },
-            { actorId: f.id, action: "talk", text: "lol same" },
-          ],
-          [{ actorId: f.id, action: "talk", text: "ok wait, I'm telling the group" }],
-          [{ actorId: f.id, action: "heart" }],
-        ],
-  };
-}
-
-export const DMS: Room[] = FRIENDS.map(dmFor);
+export const DMS: Room[] = [AI_ROOM];
 
 export const ALL_ROOMS: Room[] = [...ROOMS, ...DMS];

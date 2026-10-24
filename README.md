@@ -11,6 +11,16 @@ npm run dev
 
 Open http://localhost:3000 (best at phone width).
 
+The AI summary in "Friday plans" and the AI friend Ari call Claude Sonnet from the server. Put the key in `.env` (gitignored), and in the Vercel project's environment variables for the deployed demo:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+`.env.local` is committed and only lists the variable names, commented out. Keep it that way: Next.js reads it before `.env`, so anything set there hides the value in `.env`.
+
+Without a key both still work: the room shows a written summary and Ari answers with a fallback line.
+
 ## Where things are
 
 | Path | What |
