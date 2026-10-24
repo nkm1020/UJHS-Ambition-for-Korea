@@ -7,7 +7,7 @@
 ### Group chats you can see.
 
 Your group chat becomes a round table. Friends who are watching sit up.<br>
-Friends who aren't are face-down on the table. Everyone talks in their real voice.
+Friends who aren't are face-down on the table. You talk in your own voice.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -40,7 +40,7 @@ Scene puts those signals back on the characters, as body language:
 2. Dress your character in My Room, then pull up the sheet and open **Friday plans**.
 3. Tap 🎤 and say something, or type. Then watch who leaves you on read.
 
-The demo rooms are scripted and voiced by the team. Your own voice is real.
+The demo room is scripted. Friends speak in AI voices; your 🎤 messages are your real voice, and typed ones can use your cloned voice.
 
 ## Why now
 
@@ -67,7 +67,7 @@ Reasoning, risks and the test plan: [`docs/designs/scene-business-model.md`](doc
 
 - **App:** Next.js App Router, rendered client-side only. It needs `localStorage`, Web Audio and WebGL.
 - **Characters:** 3D avatars built with react-three-fiber. A motion engine (`src/lib/motion`) turns pose names into joint angles. Devices without WebGL, or a canvas that throws, fall back to 2D characters.
-- **Rooms:** each room is a script of beats such as `talk`, `read_ignore`, `startle_up` and `stand_leave`, plus reactions to your own messages. The beat player plays the team's recordings through Web Audio and moves mouths with the talk level.
+- **Rooms:** each room is a script of beats such as `talk`, `read_ignore`, `startle_up` and `stand_leave`, plus reactions to your own messages. The beat player plays each line's audio (AI voices from `/api/tts`) through Web Audio and moves mouths with the talk level.
 - **Your voice:** 🎤 records with `MediaRecorder` and plays back on your device. Browser speech recognition fills the bubble when it's available.
 - **Voice cloning (optional):** `/api/voice/enroll` and `/api/voice/speak` clone your voice and speak typed messages with it, through ElevenLabs or a self-hosted GPT-SoVITS server. Keys stay on the server. Without a provider, messages fall back to text bubbles.
 
@@ -111,6 +111,7 @@ Voice cloning is off unless you set one provider:
 
 - 🎤 messages at the table stay on your device as local audio. Scene never uploads them. If your browser turns speech into bubble text, it may use the browser maker's speech service.
 - Voice setup is optional. If you do it, the one line you read goes through our server to the voice provider, and so do the messages you type afterwards. The live demo uses a GPT-SoVITS server the team runs itself, not a third-party service.
+- Messages you send to Ari go through our server to Anthropic's API for a reply, and Ari's reply goes to OpenAI to be spoken. Friends' scripted lines are also voiced by OpenAI. Without those keys nothing is sent and the room falls back to bubbles.
 
 ## Project layout
 
