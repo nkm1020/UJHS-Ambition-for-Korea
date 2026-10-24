@@ -1,7 +1,7 @@
 # 제출용 PDF 2장
 
 - 원본: `pitch.html` (A4 2장, 인쇄용 CSS)
-- 결과물: `Scene-pitch-draft.pdf`
+- 결과물: `Scene-pitch.pdf`
 
 ## 완성하려면
 

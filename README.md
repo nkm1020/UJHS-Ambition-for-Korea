@@ -14,7 +14,7 @@ Friends who aren't are face-down on the table. You talk in your own voice.
 ![three.js](https://img.shields.io/badge/three.js-r186-000000?logo=threedotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 
-**[Live demo](https://scene-ujhs.vercel.app)** · [Pitch (PDF)](docs/pitch/Scene-pitch-draft.pdf) · [Product design](docs/designs/group-chat-scene.md) · [Business model](docs/designs/scene-business-model.md) · [Market data](docs/research/global-market-stats.md)
+**[Live demo](https://scene-ujhs.vercel.app)** · [Pitch (PDF)](docs/pitch/Scene-pitch.pdf) · [Product design](docs/designs/group-chat-scene.md) · [Business model](docs/designs/scene-business-model.md) · [Market data](docs/research/global-market-stats.md)
 
 </div>
 
@@ -139,5 +139,5 @@ Voice cloning is off unless you set one provider:
 ---
 
 <div align="center">
-Built in one day by a team of two for the SCHMIDT track, "the interface after the chat window."
+Built in one day by team UJHS (노강민, 이주현) for the SCHMIDT track, "the interface after the chat window."
 </div>
