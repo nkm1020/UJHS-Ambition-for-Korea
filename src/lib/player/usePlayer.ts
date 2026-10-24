@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActionName, AvatarConfig, Beat, Presence, Room, Seat, StageBubble, StageCue, StageMember } from "@/lib/types";
+import type { ActionName, AvatarConfig, Beat, Presence, Room, Seat, StageBubble, StageMember } from "@/lib/types";
 import { loadBuffer, playBuffer, type Playback } from "./audio";
 
 export type Bubble = StageBubble;
@@ -20,8 +20,6 @@ interface Live {
   focus: string | null; // who the first-person camera turns to
   focusGroup: string[]; // everyone in this beat; two or more means a wide shot
   cuts: { key: number; text: string }[]; // captioned moments, newest last, at most 4
-  peek: boolean; // Scene+: my head is down but I'm reading through half-closed eyes
-  cue: Record<string, StageCue | null>; // one-off reactions outside the script
   busy: boolean;
   scriptDone: boolean;
 }
@@ -73,12 +71,6 @@ const PRESENCE_AT_END: Partial<Record<ActionName, Presence>> = {
 const GAP_MS = 260;
 const MIN_TYPING_MS = 700; // so a fast reply still reads as typing
 
-// Scene+ peek: how long I get away with it before someone watching notices,
-// how long they hold the look, and how long their 👀 stays after I sit up.
-const PEEK_CAUGHT_MS = 2600;
-const PEEK_HOLD_MS = 1700;
-const CUE_FADE_MS = 1300;
-
 function textMs(text?: string): number {
   return Math.max(1500, (text?.length ?? 0) * 60);
 }
@@ -90,20 +82,7 @@ function initialLive(room: Room): Live {
     presence[m.id] = m.id === "me" ? "gone" : m.startsAs;
     action[m.id] = { name: null, key: 0 };
   }
-  return {
-    presence,
-    action,
-    look: {},
-    bubbles: {},
-    caption: null,
-    focus: null,
-    focusGroup: [],
-    cuts: [],
-    peek: false,
-    cue: {},
-    busy: false,
-    scriptDone: false,
-  };
+  return { presence, action, look: {}, bubbles: {}, caption: null, focus: null, focusGroup: [], cuts: [], busy: false, scriptDone: false };
 }
 
 export function usePlayer(room: Room, myAvatar: AvatarConfig) {
@@ -119,7 +98,6 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
   const lastSpeaker = useRef<string | null>(null);
   const playback = useRef<Playback | null>(null);
   const userMessages = useRef(0);
-  const peekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const seatOf = useMemo(() => {
     const map: Record<string, Seat> = {};
@@ -308,7 +286,6 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
     playback.current = null;
     fakeTalk.current.clear();
     levels.current.clear();
-    clearTimeout(peekTimer.current);
   }, []);
 
   const start = useCallback(() => {
@@ -329,8 +306,6 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
   const send = useCallback(
     (msg: UserMessage, reply?: PendingReply) => {
       if (!msg.audioUrl && !msg.text) return;
-      clearTimeout(peekTimer.current);
-      setLive((s) => (s.peek ? { ...s, peek: false } : s));
       queue.current.push({ actorId: "me", action: "talk", audio: msg.audioUrl, text: msg.text });
       if (reply) {
         queue.current.push(reply);
@@ -342,55 +317,6 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
       void run();
     },
     [room, run],
-  );
-
-  // Scene+ peek: put my head down (no read receipt) but keep reading. Anyone
-  // still watching can catch me at it: they turn to me with 👀 and I give up
-  // and sit up.
-  const setPeek = useCallback(
-    (on: boolean) => {
-      if (presenceRef.current.me === "gone") return; // not at the table yet
-      clearTimeout(peekTimer.current);
-      setPresence("me", on ? "away" : "watching");
-      setLive((s) => ({ ...s, peek: on }));
-      if (!on) return;
-
-      const gen = generation.current;
-      peekTimer.current = setTimeout(() => {
-        if (gen !== generation.current) return;
-        const watchers = room.members.filter((m) => m.id !== "me" && presenceRef.current[m.id] === "watching");
-        const catcher = watchers.find((m) => m.id === lastSpeaker.current) ?? watchers[0];
-        if (!catcher) return; // nobody looking: a clean peek
-
-        const key = keySeq.current++;
-        const caption = { text: `${catcher.name} caught you peeking`, key };
-        setLive((s) => ({
-          ...s,
-          cue: { ...s.cue, [catcher.id]: { emoji: "👀", face: "smirk", key } },
-          look: { ...s.look, [catcher.id]: seatOf.me ?? null },
-          caption,
-          cuts: [...s.cuts, caption].slice(-4),
-          focus: catcher.id,
-          focusGroup: [catcher.id],
-        }));
-
-        peekTimer.current = setTimeout(() => {
-          if (gen !== generation.current) return;
-          setPresence("me", "watching");
-          setLive((s) => ({ ...s, peek: false }));
-          peekTimer.current = setTimeout(() => {
-            if (gen !== generation.current) return;
-            setLive((s) => {
-              if (s.cue[catcher.id]?.key !== key) return s;
-              const look = { ...s.look };
-              delete look[catcher.id];
-              return { ...s, cue: { ...s.cue, [catcher.id]: null }, look };
-            });
-          }, CUE_FADE_MS);
-        }, PEEK_HOLD_MS);
-      }, PEEK_CAUGHT_MS);
-    },
-    [room, seatOf, setPresence],
   );
 
   useEffect(() => stop, [stop]);
@@ -407,9 +333,8 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
         action: live.action[m.id]?.name ?? null,
         actionKey: live.action[m.id]?.key ?? 0,
         lookAt: live.look[m.id] ?? null,
-        cue: live.cue[m.id] ?? null,
       })),
-    [room, myAvatar, live.presence, live.action, live.look, live.cue],
+    [room, myAvatar, live.presence, live.action, live.look],
   );
 
   const watching = room.members.filter((m) => m.id !== "me" && live.presence[m.id] === "watching").length;
@@ -423,8 +348,6 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
     cuts: live.cuts,
     busy: live.busy,
     scriptDone: live.scriptDone,
-    peeking: live.peek,
-    setPeek,
     watching,
     getTalkLevel,
     start,
