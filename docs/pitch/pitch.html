@@ -118,7 +118,7 @@
   .team .small { font-weight: 500; color: #3b3644; font-size: 8.4pt; }
 
   /* page 2: numbers */
-  .p2 section { margin-top: 4mm; }
+  .p2 section { margin-top: 3.4mm; }
   .p2 .two h2 { font-size: 11.5pt; }
   .p2 .cmp td:first-child { width: 25%; }
   .p2 .cmp td:nth-child(2) { width: 38%; }
@@ -139,6 +139,15 @@
   .p2 .list li { font-size: 8.5pt; line-height: 1.5; }
   .p2 .team { margin-top: 3.5mm; padding: 3.2mm 5mm; }
   .p2 .team p { margin-top: 0.6mm; }
+  .plus { background: var(--mint-soft); border-radius: 3mm; padding: 2.6mm 3.4mm; margin-top: 2.4mm; }
+  .plus .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; }
+  .plus .ph b { white-space: nowrap; font-size: 11pt; font-weight: 900; color: var(--mint-deep); letter-spacing: -0.02em; }
+  .plus .ph span { white-space: nowrap; font-size: 6.6pt; color: var(--mint-deep); font-weight: 700; }
+  .plus p { margin-top: 1mm; font-size: 8.4pt; line-height: 1.5; color: var(--ink); }
+  .p2 .list.bm { margin-top: 2.2mm; gap: 1.4mm; }
+  .p2 .list.bm li { font-size: 8.1pt; line-height: 1.45; }
+  .plus .ph em.demo { font-style: normal; display: inline-block; margin-left: 1.6mm; padding: 0.3mm 1.6mm; border-radius: 2mm; background: var(--mint-deep); color: #fff; font-size: 6.6pt; font-weight: 800; letter-spacing: 0; vertical-align: 2px; white-space: nowrap; }
+  .qr img { width: 13mm; height: 13mm; display: block; }
   .srcline { margin-top: 2.4mm; font-size: 6.4pt; color: var(--muted); line-height: 1.5; }
 </style>
 </head>
@@ -267,15 +276,15 @@
       <div class="try">
         <h3>90초 체험법</h3>
         <ol>
-          <li>캐릭터를 꾸민다</li>
-          <li>아래 시트를 끌어올려 "Friday plans"를 연다</li>
-          <li>🎤를 누르고 한마디 한다. 누가 당신을 읽씹하는지 보세요</li>
+          <li>한 줄을 읽어 목소리를 맡긴다 (건너뛰어도 됨)</li>
+          <li>캐릭터를 꾸미고 "Friday plans"를 연다</li>
+          <li>🎤로 말한다. 읽씹당하면 Peek로 몰래 엿보세요</li>
         </ol>
         <div class="link">
-          <div class="qr">QR<br />자리</div>
-          <span class="url"><span class="todo">데모 링크</span></span>
+          <div class="qr"><img src="../assets/demo-qr.svg" alt="데모 링크 QR" /></div>
+          <span class="url">scene-ujhs.vercel.app</span>
         </div>
-        <p class="honest" style="color:#b9b3c2">데모 속 친구들은 팀원이 직접 녹음했고, 당신의 목소리는 진짜입니다. 녹음은 기기 안에서만 재생되고 서버로 보내지 않습니다.</p>
+        <p class="honest" style="color:#b9b3c2">친구들 목소리는 팀원 녹음입니다. 🎤는 기기 안에서만 재생되고, 목소리 등록만 팀이 운영하는 음성 서버로 갑니다.</p>
       </div>
     </div>
   </section>
@@ -346,9 +355,8 @@
       <thead><tr><th>서비스</th><th>대화를 보여주는 방식</th><th>지금 누가 보고 있는지</th></tr></thead>
       <tbody>
         <tr><td>WhatsApp · 카카오톡</td><td>말풍선 목록, 음성은 막대기</td><td>숫자 "1", "읽음" 글씨</td></tr>
-        <tr><td>Snapchat+</td><td>말풍선 목록</td><td>채팅 목록에 친구 Bitmoji가 한 명씩 뜬다 (유료)</td></tr>
+        <tr><td>Snapchat+</td><td>말풍선 목록</td><td>채팅방에 들어온 친구를 Bitmoji로 표시 (유료)</td></tr>
         <tr><td>Discord · Gather</td><td>초록 점, 업무용 가상 사무실 속 아바타</td><td>접속 여부만. 대화와 따로 논다</td></tr>
-        <tr><td>Sora&nbsp;cameo</td><td>프롬프트로 만드는 AI 영상</td><td>해당 없음</td></tr>
         <tr class="us"><td>Scene</td><td>캐릭터들이 원탁에서 진짜 목소리로 대화</td><td>방에 있는 모두가 앉음 / 엎드림 자세로 한눈에</td></tr>
       </tbody>
     </table>
@@ -357,24 +365,28 @@
   <section>
     <div class="two">
       <div>
-        <p class="eyebrow">리스크와 대응</p>
-        <h2>반짝하고 식지 않으려면</h2>
-        <ul class="list risk">
-          <li><span><b>아바타 메신저는 쉽게 식는다.</b> Bondee는 2023년 2월 아시아 앱스토어 1위였지만 한 달 뒤 다운로드가 260만에서 40만으로 줄었다 (data.ai).<span class="ans">→ 새 친구 목록을 만들게 하지 않는다. 지금 쓰는 단톡방을 원탁으로 가져온다.</span></span></li>
-          <li><span><b>접속 상태가 드러나는 건 부담이다.</b><span class="ans">→ 숫자 대신 몸짓이면 같은 신호도 농담이 된다. 엎드리기를 '방해 금지'로 직접 고르게 한다.</span></span></li>
-          <li><span><b>목소리는 민감한 데이터다.</b><span class="ans">→ 데모는 녹음을 서버로 보내지 않고 기기 안에서만 재생한다.</span></span></li>
+        <p class="eyebrow">BM · 계획</p>
+        <h2>첫 매출은 '엎드린 채 실눈 뜨기'</h2>
+        <div class="plus">
+          <div class="ph"><b>Scene+ 구독<em class="demo">데모의 Peek 버튼</em></b><span>가격 기준 Snapchat+ 월 3.99달러</span></div>
+          <p>읽음 표시 없이 엎드린 채 실눈으로 읽는다. 대신 그 순간 앉아 있는 친구에게는 들킨다. 감시가 아니라 놀이다.</p>
+        </div>
+        <ul class="list next bm">
+          <li><span><b>무료:</b> 앉음·엎드림, 목소리 원탁, 기본 캐릭터</span></li>
+          <li><span><b>다음 매출:</b> 옷·표현 몸짓(미·영 Gen&nbsp;Z 52%가 월 10달러까지 지출 의향, Roblox), 원탁 테마(한 명이 사면 방 전원, Discord 부스트 방식)</span></li>
+          <li><span><b>성장:</b> 명장면 15초 클립은 무료, 워터마크</span></li>
+          <li><span><b>과금 전 검증:</b> 친구 그룹 10개 × 14일. 10개 중 3개 이상이 14일째 스스로 대화하고 실눈 사용이 줄지 않아야 연다</span></li>
         </ul>
       </div>
       <div>
-        <p class="eyebrow">로드맵 · 수익</p>
-        <h2>다음에 할 것</h2>
-        <ul class="list next">
-          <li><span><b>실시간 멀티유저:</b> 친구의 실제 접속 상태대로 앉고 엎드린다</span></li>
-          <li><span><b>대화 가져오기:</b> 지금 쓰는 단톡방을 그대로 원탁으로</span></li>
-          <li><span><b>명장면 클립:</b> 단톡 한 장면을 15초 숏폼으로 공유한다. 결과물이 곧 광고다</span></li>
-          <li><span><b>수익:</b> 캐릭터 아이템과 방 꾸미기. 미국·영국 Gen&nbsp;Z 52%는 아바타 옷에 월 10달러까지 쓸 생각이 있다 (Roblox, 2023)</span></li>
+        <p class="eyebrow">리스크와 대응</p>
+        <h2>반짝하고 식지 않으려면</h2>
+        <ul class="list risk">
+          <li><span><b>아바타 메신저는 쉽게 식는다.</b> Bondee는 2023년 2월 아시아 앱스토어 1위, 한 달 뒤 다운로드 260만→40만 (data.ai).<span class="ans">→ 과금보다 습관 검증이 먼저. 새 친구 목록 대신 지금 쓰는 단톡방을 원탁으로.</span></span></li>
+          <li><span><b>접속 상태가 드러나는 건 부담이다.</b><span class="ans">→ 숫자 대신 몸짓이면 같은 신호도 농담이 된다. 엎드리기를 '방해 금지'로 직접 고르게 한다.</span></span></li>
+          <li><span><b>목소리는 민감한 데이터다.</b><span class="ans">→ 🎤 녹음은 기기 안에서만 재생한다. 목소리 등록은 선택이고, 하면 한 줄만 팀이 운영하는 음성 서버로 간다.</span></span></li>
         </ul>
-        <p class="honest"><b>오늘 데모에서 되는 것:</b> 마이룸 꾸미기, 채팅방 시트, 원탁 몸짓, 내 목소리. 위 로드맵은 아직 없다. <span class="todo">14:45 동결 때 데모와 대조</span></p>
+        <p class="honest"><b>로드맵:</b> 실시간 멀티유저 · 대화 가져오기 · 클립. <b>오늘 데모:</b> 목소리 등록, 마이룸, 채팅방 시트, 원탁 몸짓, 🎤 음성, Scene+ Peek.</p>
       </div>
     </div>
   </section>
@@ -391,7 +403,7 @@
     </div>
     <div>
       <h4>연락처</h4>
-      <p class="small"><span class="todo">이메일</span><br /><span class="todo">데모 링크</span></p>
+      <p class="small"><span class="todo">이메일</span><br />scene-ujhs.vercel.app</p>
     </div>
   </div>
 
