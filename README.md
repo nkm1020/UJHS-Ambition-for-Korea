@@ -1,39 +1,135 @@
-# Scene — group chats you can see
+<div align="center">
 
-Your group chat as a round table. Whoever is watching sits up; whoever isn't is face-down on the table. Messages are spoken in real voices, with bubbles.
+<img src="docs/assets/scene-hero.svg" width="480" alt="Friends around a round table: Maya is talking, Jun is slumped away, Leo stares after reading, You are watching">
 
-## Run
+# Scene
+
+### Group chats you can see.
+
+Your group chat becomes a round table. Friends who are watching sit up.<br>
+Friends who aren't are face-down on the table. Everyone talks in their real voice.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![three.js](https://img.shields.io/badge/three.js-r186-000000?logo=threedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+
+**[Live demo](https://scene-ujhs.vercel.app)** · [Pitch (PDF)](docs/pitch/Scene-pitch-draft.pdf) · [Product design](docs/designs/group-chat-scene.md) · [Business model](docs/designs/scene-business-model.md) · [Market data](docs/research/global-market-stats.md)
+
+</div>
+
+---
+
+## The idea
+
+Chat apps keep the words and shrink everything else. Who is in the room right now, who read your message and said nothing, who answered three hours later: all of it is a grey number or a "Read 9:41" label.
+
+Scene puts those signals back on the characters, as body language:
+
+| In a chat app | At Scene's round table |
+|---|---|
+| You can't tell who is looking right now | 🪑 Whoever is watching sits up. Everyone else is slumped on the table |
+| "Read 9:41" and no reply | 👀 They lift their head, stare at you, and slump back down |
+| A reply three hours later | 💦 They jolt upright |
+| "Leo left the chat" | 🚪 They push the chair back and walk out. The seat stays empty |
+| "This message was deleted" | ✋ They clap a hand over their mouth mid-sentence |
+
+## Try it
+
+1. Read one line out loud so your avatar can speak in your voice. You can skip this.
+2. Dress your character in My Room, then pull up the sheet and open **Friday plans**.
+3. Tap 🎤 and say something, or type. Then watch who leaves you on read.
+4. Got left on read? Tap **Peek · Scene+** to read with your head down. Someone sitting up may catch you.
+
+The demo rooms are scripted and voiced by the team. Your own voice is real.
+
+## Why now
+
+| | |
+|---|---|
+| **90%** of US smartphone users tell a group chat big news before they post it on social media. Over half of Gen Z say their group chat knows their daily life better than their family does. | Giphy / Censuswide, n=2,000, 2025 |
+| **7 billion** voice messages a day on WhatsApp alone, still played back as a list of blue bars. | WhatsApp, 2022 |
+| **68%** of Messenger users surveyed have avoided opening a message just to dodge the "Seen" receipt. | Hoyle et al., CHI 2017 (US) |
+| **25M+** people pay for Snapchat+, whose perks include showing a friend's Bitmoji when they're in your chat. | Snap, 2026 |
+
+Sources and more numbers: [`docs/research/global-market-stats.md`](docs/research/global-market-stats.md).
+
+## Business model (plan)
+
+- **Free:** sitting and slumping, the voice round table, a starter character.
+- **Scene+ (first revenue):** signal gestures. The first one is *peek while slumped*, and it's in the demo as **Peek · Scene+**. You read without leaving a read mark, but anyone sitting up at that moment can catch you. Priced against Snapchat+ ($3.99/month).
+- **Next:** outfits and gestures, and table themes one friend buys for the whole room.
+- **Growth:** 15-second clips of a chat moment, free with a watermark.
+- **Before charging:** 10 friend groups for 14 days. At least 3 must still be talking on their own on day 14.
+
+Reasoning, risks and the test plan: [`docs/designs/scene-business-model.md`](docs/designs/scene-business-model.md).
+
+## How it works
+
+- **App:** Next.js App Router, rendered client-side only. It needs `localStorage`, Web Audio and WebGL.
+- **Characters:** 3D avatars built with react-three-fiber. A motion engine (`src/lib/motion`) turns pose names into joint angles. Devices without WebGL, or a canvas that throws, fall back to 2D characters.
+- **Rooms:** each room is a script of beats such as `talk`, `read_ignore`, `startle_up` and `stand_leave`, plus reactions to your own messages. The beat player plays the team's recordings through Web Audio and moves mouths with the talk level.
+- **Your voice:** 🎤 records with `MediaRecorder` and plays back on your device. Browser speech recognition fills the bubble when it's available.
+- **Voice cloning (optional):** `/api/voice/enroll` and `/api/voice/speak` clone your voice and speak typed messages with it, through ElevenLabs or a self-hosted GPT-SoVITS server. Keys stay on the server. Without a provider, messages fall back to text bubbles.
+
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000 (best at phone width).
+Open http://localhost:3000. It works best at phone width.
 
-The AI summary in "Friday plans" and the AI friend Ari call Claude Sonnet from the server. Put the key in `.env` (gitignored), and in the Vercel project's environment variables for the deployed demo:
+Keys go in `.env` (gitignored), and in the Vercel project's environment variables for the deployed demo. `.env.local` is committed and only lists the variable names, commented out. Keep it that way: Next.js reads it before `.env`, so anything set there hides the value in `.env`.
+
+The AI summary in "Friday plans" and the AI friend Ari call Claude Sonnet from the server:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-`.env.local` is committed and only lists the variable names, commented out. Keep it that way: Next.js reads it before `.env`, so anything set there hides the value in `.env`.
-
 Without a key both still work: the room shows a written summary and Ari answers with a fallback line.
 
-## Where things are
+Voice cloning is off unless you set one provider:
+
+| Variable | Use |
+|---|---|
+| `VOICE_PROVIDER` | `elevenlabs` or `sovits`. Leave it unset to turn cloning off |
+| `ELEVENLABS_API_KEY` | ElevenLabs key, for `elevenlabs` |
+| `SOVITS_URL` | GPT-SoVITS `voice_server.py` URL, for `sovits` |
+| `SOVITS_KEY` | Shared key that server expects, sent as `x-voice-key` |
+
+## Privacy
+
+- 🎤 messages at the table stay on your device as local audio. Scene never uploads them. If your browser turns speech into bubble text, it may use the browser maker's speech service.
+- Voice setup is optional. If you do it, the one line you read goes through our server to the voice provider, and so do the messages you type afterwards. The live demo uses a GPT-SoVITS server the team runs itself, not a third-party service.
+
+## Project layout
 
 | Path | What |
 |---|---|
-| `src/components/myroom/` | My Room + customizer |
-| `src/components/sheet/` | Apple Maps-style bottom sheet, room cards |
-| `src/components/room/` | Round-table room, bubbles, mic/text composer |
-| `src/components/avatar/` | Avatar slot (2D placeholder now, three.js later) |
+| `src/app/` | Entry page and the `/api/voice`, `/api/summary` and `/api/agent` routes |
+| `src/components/myroom/` | My Room and the wardrobe |
+| `src/components/sheet/` | Apple Maps-style bottom sheet, room cards, friends |
+| `src/components/room/` | Round table, bubbles, mic and text composer |
+| `src/components/avatar/` | 3D avatar, room and home stages, 2D fallback |
+| `src/components/VoiceSetup.tsx` | First-run voice setup popup |
 | `src/lib/player/` | Beat player, Web Audio playback, talk level |
-| `src/data/rooms.ts` | Demo room scripts |
+| `src/lib/motion/` | Pose and joint motion engine |
+| `src/data/` | Demo rooms, friends and 1:1 chats |
 
 ## Docs
 
-- [`docs/AVATAR-SLOT.md`](docs/AVATAR-SLOT.md) — how the three.js avatar plugs in
-- [`docs/WORK-SPLIT.md`](docs/WORK-SPLIT.md) — who does what, timeline, submission gate
-- [`docs/designs/group-chat-scene.md`](docs/designs/group-chat-scene.md) — design and reasoning
+- [`docs/designs/group-chat-scene.md`](docs/designs/group-chat-scene.md): product design and reasoning
+- [`docs/designs/scene-business-model.md`](docs/designs/scene-business-model.md): business model, risks, 14-day test
+- [`docs/research/global-market-stats.md`](docs/research/global-market-stats.md): global market data with sources
+- [`docs/pitch/`](docs/pitch/): two-page pitch (HTML source and PDF)
+- [`docs/WORK-SPLIT.md`](docs/WORK-SPLIT.md): who does what, timeline, submission gate
+- [`docs/AVATAR-SLOT.md`](docs/AVATAR-SLOT.md): how the avatar plugs in
+
+---
+
+<div align="center">
+Built in one day by a team of two for the SCHMIDT track, "the interface after the chat window."
+</div>

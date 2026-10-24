@@ -79,3 +79,18 @@ export function IconSparkle({ size = 15 }: IconProps) {
     </svg>
   );
 }
+
+export function IconEye({ size = 18, open = true }: IconProps & { open?: boolean }) {
+  return (
+    <svg {...base(size)}>
+      {open ? (
+        <>
+          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" />
+          <circle cx="12" cy="12" r="2.6" />
+        </>
+      ) : (
+        <path d="M3 10c2.4 2.6 5.4 4 9 4s6.6-1.4 9-4M6.5 13.2L5 15.5M12 14v2.6M17.5 13.2l1.5 2.3" />
+      )}
+    </svg>
+  );
+}
