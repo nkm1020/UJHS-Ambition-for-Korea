@@ -60,7 +60,7 @@ export async function enrollVoice(recording: Blob, text = VOICE_LINE): Promise<s
 }
 
 /** Returns a blob URL of the line in the cloned voice, or null. */
-export async function speakAs(voiceId: string, text: string, timeoutMs = 9000): Promise<string | null> {
+export async function speakAs(voiceId: string, text: string, timeoutMs = 15000): Promise<string | null> {
   return withTimeout(timeoutMs, async (signal) => {
     const res = await fetch("/api/voice/speak", {
       method: "POST",

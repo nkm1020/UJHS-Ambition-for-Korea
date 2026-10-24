@@ -30,7 +30,9 @@ export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
   const [recStartedAt, setRecStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
-  const [speaking, setSpeaking] = useState(false);
+  // the line being turned into my voice; shown as a bubble that is still forming
+  const [pending, setPending] = useState<string | null>(null);
+  const speaking = pending !== null;
   const recorder = useRef<Recorder | null>(null);
   const stt = useRef<ReturnType<typeof startSTT>>(null);
   const starting = useRef(false);
@@ -106,9 +108,9 @@ export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
       onSend({ text: t });
       return;
     }
-    setSpeaking(true);
+    setPending(t);
     const audioUrl = await speakAs(voiceId, t);
-    setSpeaking(false);
+    setPending(null);
     onSend({ text: t, audioUrl: audioUrl ?? undefined });
   };
 
@@ -116,14 +118,26 @@ export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
   const hasText = text.trim().length > 0;
   const chip = toast
     ? { kind: "toast", text: toast }
-    : speaking
-      ? { kind: "nudge", text: "Saying it in your voice…" }
-      : nudge && !recording
+    : nudge && !recording && !speaking
         ? { kind: "nudge", text: micOk ? "Your turn. Tap the mic and say something." : "Your turn. Type something." }
         : null;
 
   return (
     <div className="composer">
+      {pending !== null && (
+        <div className="voice-gen" role="status" aria-label="Making your voice">
+          <span className="voice-gen-wave" aria-hidden>
+            {Array.from({ length: 7 }, (_, i) => (
+              <i key={i} style={{ animationDelay: `${i * 110}ms` }} />
+            ))}
+          </span>
+          <span className="voice-gen-body">
+            <span className="voice-gen-text">{pending}</span>
+            <span className="voice-gen-label">Making your voice</span>
+          </span>
+          <i className="voice-gen-progress" aria-hidden />
+        </div>
+      )}
       {chip && (
         <div key={chip.text} className={chip.kind} role="status">
           {chip.text}

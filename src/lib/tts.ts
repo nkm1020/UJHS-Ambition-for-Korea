@@ -21,7 +21,7 @@ export function withVoices(room: Room): Room {
 }
 
 /** A live line (the AI friend's reply) as a playable blob URL, or null. */
-export async function speakLine(who: string, text: string, timeoutMs = 9000): Promise<string | null> {
+export async function speakLine(who: string, text: string, timeoutMs = 15000): Promise<string | null> {
   try {
     const res = await fetch("/api/tts", {
       method: "POST",

@@ -1555,6 +1555,139 @@ button {
   color: #fff;
 }
 
+/* my line while it turns into my voice: an outgoing bubble still forming.
+   The bars breathe, a sheen sweeps across, and a hairline fills over the
+   usual wait without ever claiming to be done. */
+
+.voice-gen {
+  position: relative;
+  align-self: flex-end;
+  max-width: 78%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 11px 12px;
+  border-radius: var(--r-bubble);
+  background: var(--tint);
+  color: #fff;
+  overflow: hidden;
+  box-shadow: 0 10px 24px -10px rgba(200, 60, 30, 0.55);
+  transform-origin: 100% 100%;
+  animation: chip-in 0.4s var(--ease-out) both;
+}
+
+.voice-gen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.26) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: voice-sheen 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes voice-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.voice-gen-wave {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 22px;
+}
+
+.voice-gen-wave i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: #fff;
+  animation: voice-build 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes voice-build {
+  from {
+    transform: scaleY(0.18);
+    opacity: 0.5;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.voice-gen-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.voice-gen-text {
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.voice-gen-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.voice-gen-label::after {
+  content: "...";
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: voice-dots 1.2s steps(4, end) infinite;
+}
+
+@keyframes voice-dots {
+  to {
+    width: 1.1em;
+  }
+}
+
+.voice-gen-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.85);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  animation: voice-progress 9s cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes voice-progress {
+  to {
+    transform: scaleX(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-gen::before,
+  .voice-gen-progress {
+    display: none;
+  }
+  .voice-gen-wave i,
+  .voice-gen-label::after {
+    animation: none;
+  }
+  .voice-gen-wave i {
+    transform: scaleY(0.6);
+  }
+}
+
 /* door: the 2D fallback's entrance (the 3D stage walks through a real one).
    Painted double doors with raised panels swing away into the room. */
 
