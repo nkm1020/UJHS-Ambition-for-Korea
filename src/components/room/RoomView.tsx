@@ -7,7 +7,7 @@ import { usePlayer } from "@/lib/player/usePlayer";
 import { setMuted } from "@/lib/player/audio";
 import { AvatarStage, STAGE_MODE } from "@/components/avatar";
 import { defaultAnchor } from "@/components/avatar/seatLayout";
-import { IconBack, IconSound } from "@/components/icons";
+import { IconBack, IconEye, IconSound } from "@/components/icons";
 import { BubbleLayer } from "./BubbleLayer";
 import { Composer } from "./Composer";
 
@@ -82,7 +82,12 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
           focusId={player.focusId}
           focusGroup={player.focusGroup}
           bubbles={othersBubbles}
+          peek={player.peeking}
         />
+        <div className={`lids ${player.peeking ? "is-peeking" : ""}`} aria-hidden>
+          <i className="lid top" />
+          <i className="lid bottom" />
+        </div>
         {STAGE_MODE === "2d" && stageBox.w > 0 && (
           <BubbleLayer bubbles={player.bubbles} anchors={bubbleAnchors} meId="me" width={stageBox.w} />
         )}
@@ -107,6 +112,20 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
         {player.caption && (
           <div key={player.caption.key} className="caption">
             {player.caption.text}
+          </div>
+        )}
+        {doorOpen && (
+          <div className="peek-dock">
+            {player.peeking && <span className="peek-note">Head down. No read receipt.</span>}
+            <button
+              className={`peek-btn ${player.peeking ? "is-on" : ""}`}
+              aria-pressed={player.peeking}
+              onClick={() => player.setPeek(!player.peeking)}
+            >
+              <IconEye open={!player.peeking} />
+              {player.peeking ? "Sit up" : "Peek"}
+              <span className="plus-badge">Scene+</span>
+            </button>
           </div>
         )}
       </div>

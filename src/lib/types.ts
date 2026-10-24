@@ -147,6 +147,13 @@ export interface StageMember {
   action: ActionName | null;   // 지금 재생 중인 동작, null = presence 자세로 대기
   actionKey: number;           // 동작이 시작될 때마다 바뀜 (같은 동작도 다시 재생)
   lookAt: Seat | null;         // 쳐다보는 자리, null = 카메라 정면
+  cue?: StageCue | null;       // 대본 밖 짧은 반응 (예: 실눈 뜬 나를 들켰을 때 👀)
+}
+
+export interface StageCue {
+  emoji: string;
+  face?: FaceName;
+  key: number;
 }
 
 export interface StageAnchor {
@@ -172,6 +179,8 @@ export interface AvatarStageProps {
   bubbles?: Record<string, StageBubble | null>;
   /** 방의 배경막 색 */
   backdrop?: string;
+  /** Scene+ 실눈: 내가 엎드린 채 테이블 너머를 훔쳐본다. 카메라가 팔 위 높이로 내려간다 */
+  peek?: boolean;
   /** 멤버의 입 벌림 0..1. 가볍다. 매 프레임 불러도 된다. */
   getTalkLevel: (memberId: string) => number;
   /** 말풍선 위치 보고. 선택. 없으면 자리별 기본값을 쓴다. */
