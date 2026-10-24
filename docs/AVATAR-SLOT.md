@@ -93,11 +93,11 @@ export function AvatarStand(props: AvatarStandProps) {
 
 ## 꾸미기 옵션과 상점
 
-꾸미기 화면은 `src/components/myroom/Wardrobe.tsx`다. 마이룸 위에 뜨는 유리 패널(화면 아래 40%)에서 카테고리(Body · Hair · Expression · Hats · Glasses · Bags · Pants · Shoes)가 스크롤되고, 위의 칩으로 건너뛴다. 홈 카메라의 편집 구도(`HomeStage3D`의 `EDIT`)는 캐릭터와 모자가 패널 위 공간에 들어오도록 맞춰 두었다.
+꾸미기 화면은 `src/components/myroom/Wardrobe.tsx`다. 마이룸 위에 뜨는 유리 패널(화면 아래 40%)에서 색 카테고리(Body · Pants · Shoes)가 스크롤되고, 위의 칩으로 건너뛴다. 헤어·모자·안경·가방은 고르는 칸을 뺐고 Shuffle로만 입는다(2026-10-24, 타일이 글씨만 보이는 화면이 있어 제출 전에 뺐다). 홈 카메라의 편집 구도(`HomeStage3D`의 `EDIT`)는 캐릭터와 모자가 패널 위 공간에 들어오도록 맞춰 두었다.
 
 - **색:** `src/lib/avatar.ts`의 `AVATAR_OPTIONS`. 값만 추가하면 UI가 따라온다. 색은 전부 무료다.
 - **모양(헤어·표정·모자·안경·가방):** 같은 파일의 `STYLES`. 각 목록의 첫 항목이 기본값이고, `price`(USD)가 있으면 유료다.
-- **산 아이템:** `useMe().me.owned`에 `'hat:crown'` 같은 키로 저장된다. 유료 아이템은 눌러서 입어 볼 수 있고, Get이나 Done을 누르면 결제 시트가 뜬다. **데모는 심사위원용이라 결제 없이 바로 unlock된다.** 상점이 생기기 전에 저장된 모습에 들어 있던 유료 아이템은 산 것으로 친다.
+- **산 아이템:** `useMe().me.owned`에 `'hat:crown'` 같은 키로 저장된다. Shuffle로 유료 아이템이 입혀지면 아래에 Get 바가 뜨고, Get이나 Done을 누르면 결제 시트가 뜬다. **데모는 심사위원용이라 결제 없이 바로 unlock된다.** 상점이 생기기 전에 저장된 모습에 들어 있던 유료 아이템은 산 것으로 친다.
 - **`expression`은 마이룸에서 짓는 표정이다.** 원탁의 표정은 지금처럼 `ACTION_POSES`가 정한다(내 캐릭터는 원탁에서 1인칭이라 안 보인다).
 - **`bag`은 boolean에서 `'none' | 'fanny' | 'crossbody' | 'backpack'`으로 바뀌었다.** 예전에 저장된 `true`는 `'fanny'`로 읽는다.
 

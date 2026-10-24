@@ -4,14 +4,11 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import type { AvatarConfig, BagName } from "@/lib/types";
 import {
   AVATAR_OPTIONS,
-  STYLES,
   avatarFaceUrl,
   bagIconUrl,
   formatPrice,
-  itemKey,
   lockedItems,
   randomAvatar,
-  type StyleItem,
   type StyleSlot,
 } from "@/lib/avatar";
 import { useMe } from "@/lib/me";
@@ -20,10 +17,10 @@ import { IconShuffle } from "@/components/icons";
 // Edit mode controls, laid over My Room. There is no second canvas: the
 // figure being edited is the one in the room, framed by the home camera
 // above this panel, and drags pass through this layer to turn it.
-// The panel scrolls through the categories; the chips jump between them.
-// Paid items try on for free: they go straight onto the figure with a
-// price tag, and unlocking happens at checkout (Get, or Done with a paid
-// item on). The demo is for judges, so checkout takes no payment.
+// The panel scrolls through the color categories; the chips jump between
+// them. Hair, hats, glasses and bags come on with Shuffle; a paid one brings
+// up the unlock bar, and unlocking happens at checkout (Get, or Done with a
+// paid item on). The demo is for judges, so checkout takes no payment.
 // Nothing saves until Done.
 
 interface WardrobeProps {
@@ -36,18 +33,13 @@ interface WardrobeProps {
 
 const CATEGORIES = [
   { id: "body", label: "Body" },
-  { id: "hair", label: "Hair" },
-  { id: "expression", label: "Expression" },
-  { id: "hat", label: "Hats" },
-  { id: "glasses", label: "Glasses" },
-  { id: "bag", label: "Bags" },
   { id: "legs", label: "Pants" },
   { id: "shoes", label: "Shoes" },
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
 
-type ColorKey = "body" | "face" | "skin" | "legs" | "shoes" | "hairColor" | "hatColor" | "glassesColor" | "bagColor";
+type ColorKey = "body" | "face" | "skin" | "legs" | "shoes";
 
 const SLOT_LABEL: Record<StyleSlot, string> = {
   hair: "Hair",
@@ -191,36 +183,6 @@ export function Wardrobe({ open, draft, onChange, onCancel, onDone }: WardrobePr
     </>
   );
 
-  const styleTiles = (slot: StyleSlot) => {
-    const items: readonly StyleItem[] = STYLES[slot];
-    return (
-      <div className="tiles">
-        {items.map((it) => {
-          const on = draft[slot] === it.id;
-          const paid = !!it.price && !owned.includes(itemKey(slot, it.id));
-          const img = tileImage(slot, it.id, draft);
-          return (
-            <button
-              key={it.id}
-              className={`tile ${on ? "is-on" : ""}`}
-              aria-pressed={on}
-              aria-label={paid ? `${it.name}, ${formatPrice(it.price!)}` : it.name}
-              onClick={() => onChange({ ...draft, [slot]: it.id } as AvatarConfig)}
-            >
-              {img ? (
-                <span className="tile-img" style={{ backgroundImage: `url("${img}")` }} aria-hidden />
-              ) : (
-                <span className="tile-none" aria-hidden />
-              )}
-              <span className="tile-name">{it.name}</span>
-              {paid && <span className="tile-price">{formatPrice(it.price!)}</span>}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <div className={`wardrobe ${open ? "is-open" : ""}`} role="dialog" aria-modal="true" aria-label="Edit look" inert={!open}>
       <header className="wardrobe-bar">
@@ -271,39 +233,6 @@ export function Wardrobe({ open, draft, onChange, onCancel, onDone }: WardrobePr
               {swatches("Body color", "body", AVATAR_OPTIONS.body)}
               {subSwatches("Face", "face", AVATAR_OPTIONS.face)}
               {subSwatches("Arms", "skin", AVATAR_OPTIONS.skin)}
-            </>,
-          )}
-          {section(
-            "hair",
-            "Hair",
-            <>
-              {styleTiles("hair")}
-              {draft.hair !== "none" && subSwatches("Hair color", "hairColor", AVATAR_OPTIONS.hairColor)}
-            </>,
-          )}
-          {section("expression", "Expression", styleTiles("expression"))}
-          {section(
-            "hat",
-            "Hats",
-            <>
-              {styleTiles("hat")}
-              {(draft.hat === "beanie" || draft.hat === "headphones") && subSwatches("Hat color", "hatColor", AVATAR_OPTIONS.accent)}
-            </>,
-          )}
-          {section(
-            "glasses",
-            "Glasses",
-            <>
-              {styleTiles("glasses")}
-              {draft.glasses !== "none" && subSwatches("Frame color", "glassesColor", AVATAR_OPTIONS.accent)}
-            </>,
-          )}
-          {section(
-            "bag",
-            "Bags",
-            <>
-              {styleTiles("bag")}
-              {draft.bag !== "none" && subSwatches("Bag color", "bagColor", AVATAR_OPTIONS.accent)}
             </>,
           )}
           {section("legs", "Pants", swatches("Pants color", "legs", AVATAR_OPTIONS.legs))}
