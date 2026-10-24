@@ -54,11 +54,13 @@ export type ActionName =
 
 export type Presence = 'watching' | 'away' | 'gone'; // 앉음 / 엎드림 / 빈자리
 
+export type Seat = 0 | 1 | 2 | 3 | 4; // 테이블 먼 쪽 호, 왼쪽부터
+
 export interface Member {
   id: string;
   name: string;
   avatar: AvatarConfig;
-  seat: 0 | 1 | 2 | 3 | 4;
+  seat: Seat;
   startsAs: Presence;
 }
 
@@ -78,6 +80,7 @@ export interface Room {
   emoji: string;
   preview: string;
   unread: number;
+  backdrop?: string;     // 부스 배경막 색. 방의 정체성 색이자 원탁 방의 벽 색
   members: Member[];
   script: Beat[];
   onUserMessage: Beat[][];
@@ -128,3 +131,52 @@ export const PRESENCE_POSE: Record<Exclude<Presence, 'gone'>, PoseName> = {
   watching: 'sit',
   away: 'slump',
 };
+
+/* ── 아바타 슬롯: UI ↔ 아바타 렌더러 경계 ─────────────────────
+   2D 임시 아바타와 3D 아바타가 같은 props를 받는다. 바꿔 끼우는 곳은
+   src/components/avatar/index.ts 한 줄. docs/AVATAR-SLOT.md 참고. */
+
+export interface StageMember {
+  id: string;
+  name: string;
+  seat: Seat;
+  avatar: AvatarConfig;
+  isMe: boolean;
+  presence: Presence;          // 대기 자세
+  action: ActionName | null;   // 지금 재생 중인 동작, null = presence 자세로 대기
+  actionKey: number;           // 동작이 시작될 때마다 바뀜 (같은 동작도 다시 재생)
+  lookAt: Seat | null;         // 쳐다보는 자리, null = 카메라 정면
+}
+
+export interface StageAnchor {
+  x: number; // 무대 박스 왼쪽에서 px
+  y: number; // 무대 박스 위에서 px, 머리 바로 위
+}
+
+/** 말풍선 한 개. 3D 무대는 머리 위에, 2D는 BubbleLayer가 그린다. */
+export interface StageBubble {
+  key: number;
+  kind: 'text' | 'voice' | 'typing' | 'unsent';
+  text?: string;
+  voiceSec?: number;
+}
+
+export interface AvatarStageProps {
+  members: StageMember[];
+  /** 카메라(1인칭 시선)가 향할 멤버. null이나 'me'면 테이블 가운데 */
+  focusId?: string | null;
+  /** 3D 무대가 머리 위에 그릴 말풍선. 2D 무대는 무시한다 */
+  bubbles?: Record<string, StageBubble | null>;
+  /** 방의 배경막 색 */
+  backdrop?: string;
+  /** 멤버의 입 벌림 0..1. 가볍다. 매 프레임 불러도 된다. */
+  getTalkLevel: (memberId: string) => number;
+  /** 말풍선 위치 보고. 선택. 없으면 자리별 기본값을 쓴다. */
+  onAnchors?: (anchors: Record<string, StageAnchor>) => void;
+}
+
+export interface AvatarStandProps {
+  avatar: AvatarConfig;
+  /** 꾸미기 화면처럼 손가락으로 돌려볼 수 있게 */
+  spin?: boolean;
+}

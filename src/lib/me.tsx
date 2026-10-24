@@ -14,6 +14,8 @@ const KEY = 'ujhs.me.v1';
 
 const Ctx = createContext<{
   me: Me;
+  /** Same as me.avatar; the room and My Room screens read this. */
+  avatar: AvatarConfig;
   setAvatar(cfg: AvatarConfig): void;
   setName(name: string): void;
   setStatus(status: string): void;
@@ -52,6 +54,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider
       value={{
         me,
+        avatar: me.avatar,
         setAvatar: (avatar) => setMe((m) => ({ ...m, avatar })),
         setName: (name) => setMe((m) => ({ ...m, name })),
         setStatus: (status) => setMe((m) => ({ ...m, status })),

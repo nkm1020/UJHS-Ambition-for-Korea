@@ -15,7 +15,7 @@
 ## 12:30–13:30 마이룸 + 바텀시트
 - [ ] `src/lib/me.tsx`: `MeProvider`, `useMe()`, localStorage 저장, 첫 방문은 `randomAvatar()`
 - [ ] `MyRoom`: 방 배경 + `<AvatarStage spin><Avatar pose="idle" /></AvatarStage>` (숨쉬기·눈깜빡임은 이미 들어 있음)
-- [ ] `Customizer`: `AVATAR_OPTIONS` 슬롯 6개(몸통·피부·다리·신발·얼굴·안경) + 가방 토글 + 🎲 → 즉시 반영. **`src/app/page.tsx`의 임시 화면에 이미 다 있으니 그걸 옮겨 다듬으면 된다**
+- [ ] `Customizer`: `AVATAR_OPTIONS` 슬롯 6개(몸통·피부·다리·신발·얼굴·안경) + 가방 토글 + 🎲 → 즉시 반영. **`src/app/avatar/page.tsx`(`/avatar`)의 임시 화면에 이미 다 있으니 그걸 옮겨 다듬으면 된다**
 - [ ] `BottomSheet`: 접힘 → 반 → 전체 (snap points, 예: `vaul`)
 - [ ] `RoomCard`: 이모지 + 이름, 미니 원탁(`avatarFaceUrl()`의 작은 얼굴 — 카드마다 Canvas를 띄우지 말 것), 미리보기, 안 읽은 수
 - [ ] 첫 방에만 "Open a chat 👆" 힌트, 카드 탭 → `onOpen(room.id)`

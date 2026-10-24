@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Scene — 단톡방이 원탁이 된다</title>
+<style>
+  @font-face {
+    font-family: "NSKR";
+    src: url("file:///Users/kangmin/Library/Fonts/NotoSansKR-VariableFont_wght.ttf");
+    font-weight: 100 900;
+  }
+  @page { size: A4; margin: 0; }
+  :root {
+    --mint: #3fd3a4;
+    --mint-soft: #c9f5e6;
+    --mint-deep: #0e3b31;
+    --ink: #1d1b26;
+    --muted: #6f6779;
+    --line: #e7e1d8;
+    --cream: #fff7ee;
+    --coral: #ff6b5e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #fff; }
+  body {
+    font-family: "NSKR", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    color: var(--ink);
+    font-size: 9.4pt;
+    line-height: 1.55;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    word-break: keep-all;
+  }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 13mm 14mm 11mm;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* header / footer */
+  .top { display: flex; justify-content: space-between; align-items: center; font-size: 8pt; color: var(--muted); font-weight: 600; }
+  .mark { display: flex; align-items: center; gap: 6px; font-size: 13pt; font-weight: 900; color: var(--ink); letter-spacing: -0.02em; }
+  .mark i { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px rgba(63, 211, 164, 0.25); }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; font-size: 7.6pt; color: var(--muted); padding-top: 4mm; border-top: 1px solid var(--line); }
+  .todo { background: #fff3c4; color: #7a5b00; padding: 0 4px; border-radius: 3px; font-weight: 700; }
+
+  /* page 1 hero */
+  .hero { display: grid; grid-template-columns: 1fr 76mm; gap: 7mm; margin-top: 8mm; align-items: center; }
+  h1 { font-size: 30pt; line-height: 1.12; font-weight: 900; letter-spacing: -0.035em; }
+  .sub { margin-top: 2mm; font-size: 11pt; font-weight: 700; color: var(--mint-deep); letter-spacing: -0.01em; }
+  .lead { margin-top: 4mm; font-size: 10pt; line-height: 1.65; color: #3b3644; }
+  .lead b { color: var(--ink); }
+  .hero-art { width: 76mm; height: 58mm; border-radius: 6mm; background: var(--cream); overflow: hidden; }
+
+  h2 { font-size: 14pt; font-weight: 900; letter-spacing: -0.025em; }
+  .eyebrow { font-size: 7.6pt; font-weight: 800; color: var(--mint-deep); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 1.2mm; }
+  section { margin-top: 8mm; }
+
+  /* signal table */
+  table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+  th { text-align: left; font-size: 7.8pt; font-weight: 800; color: var(--muted); padding: 0 0 1.6mm; border-bottom: 1.5px solid var(--ink); }
+  td { padding: 2.1mm 3mm 2.1mm 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { color: var(--muted); width: 44%; }
+  td:last-child { font-weight: 700; }
+  td .em { display: inline-block; width: 6mm; }
+
+  /* screens + try */
+  .bottom { display: grid; grid-template-columns: repeat(3, 38mm) 1fr; gap: 5mm; margin-top: 3mm; align-items: start; }
+  .phone { width: 38mm; }
+  .shot {
+    width: 38mm; height: 78mm; border-radius: 5mm; border: 1.6mm solid var(--ink);
+    background: var(--mint-soft) center top / cover no-repeat;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-size: 7pt; font-weight: 700; color: var(--mint-deep); padding: 3mm;
+  }
+  .shot span { background: rgba(255, 255, 255, 0.75); border-radius: 2mm; padding: 1mm 1.5mm; }
+  .cap { margin-top: 2mm; font-size: 7.8pt; line-height: 1.45; }
+  .cap b { display: block; font-size: 8.4pt; }
+  .try { background: var(--ink); color: #fff; border-radius: 5mm; padding: 5mm 5mm 4.5mm; height: 78mm; display: flex; flex-direction: column; }
+  .try h3 { font-size: 11.5pt; font-weight: 900; letter-spacing: -0.02em; }
+  .try ol { list-style: none; margin-top: 3mm; display: grid; gap: 2.2mm; counter-reset: s; }
+  .try li { counter-increment: s; display: grid; grid-template-columns: 5mm 1fr; font-size: 8.4pt; line-height: 1.45; }
+  .try li::before { content: counter(s); width: 4mm; height: 4mm; border-radius: 50%; background: var(--mint); color: var(--mint-deep); font-size: 7pt; font-weight: 900; display: grid; place-items: center; margin-top: 0.4mm; }
+  .try .link { margin-top: auto; display: flex; gap: 3mm; align-items: center; }
+  .qr { width: 15mm; height: 15mm; border-radius: 2mm; background: #fff; color: var(--ink); font-size: 6pt; font-weight: 800; display: grid; place-items: center; text-align: center; flex: none; }
+  .try .url { font-size: 7.6pt; font-weight: 700; color: var(--mint); word-break: break-all; }
+  .honest { margin-top: 3mm; font-size: 7.4pt; color: var(--muted); }
+
+  /* page 2 */
+  .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; margin-top: 4mm; }
+  .why h4 { font-size: 10.4pt; font-weight: 900; letter-spacing: -0.02em; line-height: 1.35; margin-bottom: 1.6mm; }
+  .why p { color: #3b3644; font-size: 8.8pt; }
+  .why div { border-top: 3px solid var(--mint); padding-top: 3mm; }
+
+  .cmp td:first-child { width: 22%; color: var(--ink); font-weight: 800; }
+  .cmp td:nth-child(2) { width: 42%; color: #3b3644; font-weight: 500; }
+  .cmp td:last-child { color: #3b3644; font-weight: 500; }
+  .cmp tr.us td { background: var(--mint-soft); color: var(--mint-deep); font-weight: 800; }
+  .cmp tr.us td:first-child { padding-left: 2mm; border-radius: 2mm 0 0 2mm; }
+  .cmp tr.us td:last-child { border-radius: 0 2mm 2mm 0; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 4mm; }
+  .list { list-style: none; display: grid; gap: 2.4mm; margin-top: 2.5mm; }
+  .list li { display: grid; grid-template-columns: 5mm 1fr; font-size: 8.9pt; }
+  .list li::before { content: "✓"; color: var(--mint); font-weight: 900; }
+  .list.next li::before { content: "→"; color: var(--coral); }
+  .list li b { font-weight: 800; }
+
+  .team { margin-top: 8mm; display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 5mm; background: var(--cream); border-radius: 5mm; padding: 5mm; }
+  .team h4 { font-size: 7.6pt; font-weight: 800; color: var(--muted); letter-spacing: 0.04em; }
+  .team p { margin-top: 1mm; font-size: 9pt; font-weight: 700; }
+  .team .small { font-weight: 500; color: #3b3644; font-size: 8.4pt; }
+
+  /* page 2: numbers */
+  .p2 section { margin-top: 4mm; }
+  .p2 .two h2 { font-size: 11.5pt; }
+  .p2 .cmp td:first-child { width: 25%; }
+  .p2 .cmp td:nth-child(2) { width: 38%; }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; margin-top: 3.5mm; }
+  .stat3 > div { border-top: 3px solid var(--mint); padding-top: 2.6mm; }
+  .big { font-size: 19pt; font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; }
+  .big small { font-size: 10pt; font-weight: 800; margin-left: 0.8mm; letter-spacing: -0.01em; }
+  .stat3 p { margin-top: 1.4mm; font-size: 8.4pt; line-height: 1.5; color: #3b3644; }
+  .src { display: block; margin-top: 1.2mm; font-size: 6.8pt; color: var(--muted); line-height: 1.4; }
+  .stat4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 3mm; }
+  .stat4 > div { background: var(--cream); border-radius: 3mm; padding: 3mm 3.2mm 2.6mm; }
+  .num { font-size: 14pt; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
+  .stat4 p { margin-top: 1.2mm; font-size: 7.9pt; line-height: 1.45; color: #3b3644; }
+  .p2 .cmp td { padding-top: 1.4mm; padding-bottom: 1.4mm; font-size: 8.6pt; }
+  .list.risk li::before { content: "!"; color: var(--coral); }
+  .list .ans { display: block; color: var(--mint-deep); font-weight: 700; margin-top: 0.6mm; }
+  .p2 .list { gap: 2mm; }
+  .p2 .list li { font-size: 8.5pt; line-height: 1.5; }
+  .p2 .team { margin-top: 3.5mm; padding: 3.2mm 5mm; }
+  .p2 .team p { margin-top: 0.6mm; }
+  .srcline { margin-top: 2.4mm; font-size: 6.4pt; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- ============================== PAGE 1 ============================== -->
+<div class="page">
+  <div class="top">
+    <span class="mark"><i></i>Scene</span>
+    <span>SCHMIDT 트랙 · 채팅창 다음의 인터페이스 · <span class="todo">팀 이름</span></span>
+  </div>
+
+  <div class="hero">
+    <div>
+      <h1>단톡방이<br />원탁이 된다.</h1>
+      <p class="sub">Group chats you can see.</p>
+      <p class="lead">
+        채팅은 말만 남기고 관계의 신호를 지웁니다. 누가 지금 보고 있는지, 누가 읽고도 답을 안 하는지가 회색 숫자와
+        "Read 9:41" 한 줄로 쪼그라들어 있죠. <b>Scene에서는 채팅방이 원탁이 됩니다.</b> 보고 있는 사람은 앉아 있고,
+        안 보는 사람은 테이블에 엎드려 있습니다. 대화는 각자의 캐릭터가 <b>진짜 목소리</b>로 합니다.
+      </p>
+    </div>
+
+    <svg class="hero-art" viewBox="0 0 300 228" xmlns="http://www.w3.org/2000/svg" aria-label="원탁에 둘러앉은 캐릭터들">
+      <rect width="300" height="228" fill="#fff7ee" />
+      <rect y="150" width="300" height="78" fill="#f1dcc3" />
+      <!-- speech bubble -->
+      <g transform="translate(18 26)">
+        <rect width="128" height="30" rx="15" fill="#fff" />
+        <path d="M34 29 l8 9 l4 -9 z" fill="#fff" />
+        <text x="64" y="20" text-anchor="middle" font-family="NSKR, sans-serif" font-size="12" font-weight="800" fill="#1d1b26">friday. still on??</text>
+      </g>
+      <!-- caption chip -->
+      <g transform="translate(176 22)">
+        <rect width="100" height="22" rx="11" fill="#1d1b26" />
+        <text x="50" y="15" text-anchor="middle" font-family="NSKR, sans-serif" font-size="10.5" font-weight="800" fill="#fff">Read 9:41 PM</text>
+      </g>
+      <!-- chairs -->
+      <g fill="#8c6ff0">
+        <rect x="30" y="92" width="52" height="64" rx="18" />
+        <rect x="92" y="80" width="52" height="64" rx="18" />
+        <rect x="156" y="80" width="52" height="64" rx="18" />
+        <rect x="218" y="92" width="52" height="64" rx="18" />
+      </g>
+      <!-- Maya: watching, talking -->
+      <g transform="translate(56 100)">
+        <rect x="-19" y="22" width="38" height="44" rx="16" fill="#ff8a65" />
+        <circle r="23" fill="#f5cba7" />
+        <path d="M-24 -4 a24 24 0 0 1 48 0 l0 -6 a24 22 0 0 0 -48 0 z" fill="#2b2118" />
+        <path d="M-24 -2 C-24 -30 24 -30 24 -2 C14 -12 -14 -12 -24 -2z" fill="#2b2118" />
+        <circle cx="-8" cy="3" r="2.6" fill="#2a2230" /><circle cx="8" cy="3" r="2.6" fill="#2a2230" />
+        <ellipse cx="0" cy="13" rx="5" ry="4" fill="#7a2f3b" />
+      </g>
+      <!-- Jun: away (slumped) -->
+      <g transform="translate(118 112)" opacity="0.62">
+        <rect x="-19" y="12" width="38" height="44" rx="16" fill="#7c83fd" />
+        <g transform="rotate(12)">
+          <circle r="22" fill="#e0ac86" />
+          <path d="M-22 -2 C-22 -28 22 -28 22 -2 C12 -10 -12 -10 -22 -2z" fill="#2b2118" />
+          <rect x="-11" y="5" width="7" height="2" rx="1" fill="#2a2230" /><rect x="4" y="5" width="7" height="2" rx="1" fill="#2a2230" />
+        </g>
+        <text x="20" y="-18" font-family="NSKR, sans-serif" font-size="13" font-weight="900" fill="#8b7bd8">z</text>
+        <text x="28" y="-28" font-family="NSKR, sans-serif" font-size="10" font-weight="900" fill="#8b7bd8">z</text>
+      </g>
+      <!-- Leo: read and ignore -->
+      <g transform="translate(182 92)">
+        <rect x="-19" y="22" width="38" height="44" rx="16" fill="#ffc93c" />
+        <g transform="translate(-4 0) rotate(-8)">
+          <circle r="22" fill="#c68863" />
+          <path d="M-22 -2 C-22 -28 22 -28 22 -2 C12 -10 -12 -10 -22 -2z" fill="#6b4226" />
+          <circle cx="-12" cy="3" r="2.4" fill="#2a2230" /><circle cx="2" cy="3" r="2.4" fill="#2a2230" />
+          <rect x="-8" y="12" width="8" height="2" rx="1" fill="#7a2f3b" />
+        </g>
+        <text x="-14" y="-28" font-size="18">👀</text>
+      </g>
+      <!-- You: watching, mint ring -->
+      <g transform="translate(244 104)">
+        <rect x="-19" y="22" width="38" height="44" rx="16" fill="#3fd3a4" />
+        <circle r="23" fill="#fce3d2" stroke="#3fd3a4" stroke-width="3" />
+        <path d="M-23 -1 C-23 -30 23 -30 23 -1 C13 -11 -13 -11 -23 -1z" fill="#e46a4b" />
+        <circle cx="-8" cy="4" r="2.6" fill="#2a2230" /><circle cx="8" cy="4" r="2.6" fill="#2a2230" />
+        <rect x="-4" y="13" width="8" height="2.4" rx="1.2" fill="#7a2f3b" />
+      </g>
+      <!-- table -->
+      <ellipse cx="150" cy="190" rx="142" ry="38" fill="#8f5b31" />
+      <ellipse cx="150" cy="182" rx="142" ry="36" fill="#d79b6c" />
+      <g font-family="NSKR, sans-serif" font-size="9.5" font-weight="800" text-anchor="middle">
+        <rect x="36" y="160" width="40" height="15" rx="7.5" fill="#fff" /><text x="56" y="171" fill="#5a4a3a">Maya</text>
+        <rect x="100" y="156" width="36" height="15" rx="7.5" fill="#fff" opacity="0.7" /><text x="118" y="167" fill="#5a4a3a">Jun</text>
+        <rect x="162" y="156" width="36" height="15" rx="7.5" fill="#fff" /><text x="180" y="167" fill="#5a4a3a">Leo</text>
+        <rect x="226" y="160" width="36" height="15" rx="7.5" fill="#3fd3a4" /><text x="244" y="171" fill="#053b2c">You</text>
+      </g>
+    </svg>
+  </div>
+
+  <section>
+    <p class="eyebrow">핵심 아이디어</p>
+    <h2>채팅이 숨기던 신호가 몸짓이 됩니다</h2>
+    <table>
+      <thead><tr><th>채팅에서는</th><th>Scene의 원탁에서는</th></tr></thead>
+      <tbody>
+        <tr><td>지금 누가 보고 있는지 알 수 없다</td><td><span class="em">🪑</span>보고 있는 사람만 앉아 있고, 나머지는 엎드려 있다</td></tr>
+        <tr><td>"Read 9:41"만 뜨고 답이 없다</td><td><span class="em">👀</span>고개를 들어 쳐다보고는 다시 엎드린다</td></tr>
+        <tr><td>3시간 뒤에 답장이 온다</td><td><span class="em">💦</span>화들짝 일어나 앉는다</td></tr>
+        <tr><td>"OO님이 나갔습니다"</td><td><span class="em">🚪</span>의자를 밀고 일어나 방을 나간다. 빈 의자가 남는다</td></tr>
+        <tr><td>"삭제된 메시지입니다"</td><td><span class="em">✋</span>말하다가 손으로 입을 틀어막는다</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <p class="eyebrow">화면</p>
+    <div class="bottom">
+      <div class="phone">
+        <div class="shot" style="background-image: url('shots/01-myroom.png')"><span>shots/01-myroom.png<br />교체 예정</span></div>
+        <p class="cap"><b>마이룸</b>내 캐릭터를 꾸미는 첫 화면</p>
+      </div>
+      <div class="phone">
+        <div class="shot" style="background-image: url('shots/02-rooms.png')"><span>shots/02-rooms.png<br />교체 예정</span></div>
+        <p class="cap"><b>채팅방 현황</b>끌어올리는 시트. 방마다 누가 앉아 있는지 보인다</p>
+      </div>
+      <div class="phone">
+        <div class="shot" style="background-image: url('shots/03-table.png')"><span>shots/03-table.png<br />교체 예정</span></div>
+        <p class="cap"><b>원탁</b>읽고 답 안 하는 순간</p>
+      </div>
+      <div class="try">
+        <h3>90초 체험법</h3>
+        <ol>
+          <li>캐릭터를 꾸민다</li>
+          <li>아래 시트를 끌어올려 "Friday plans"를 연다</li>
+          <li>🎤를 누르고 한마디 한다. 누가 당신을 읽씹하는지 보세요</li>
+        </ol>
+        <div class="link">
+          <div class="qr">QR<br />자리</div>
+          <span class="url"><span class="todo">데모 링크</span></span>
+        </div>
+        <p class="honest" style="color:#b9b3c2">데모 속 친구들은 팀원이 직접 녹음했고, 당신의 목소리는 진짜입니다. 녹음은 기기 안에서만 재생되고 서버로 보내지 않습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot"><span>Scene · 단톡방이 원탁이 된다</span><span>1 / 2</span></div>
+</div>
+
+<!-- ============================== PAGE 2 ============================== -->
+<div class="page p2">
+  <div class="top">
+    <span class="mark"><i></i>Scene</span>
+    <span>SCHMIDT 트랙 · 채팅창 다음의 인터페이스 · <span class="todo">팀 이름</span></span>
+  </div>
+
+  <section style="margin-top: 5mm">
+    <p class="eyebrow">왜 지금</p>
+    <h2>대화는 단톡으로 옮겨갔는데, 화면은 그대로입니다</h2>
+    <div class="stat3">
+      <div>
+        <div class="big">90%</div>
+        <p>큰 소식을 SNS보다 단톡에 먼저 말한다. Gen&nbsp;Z 과반은 "단톡이 가족보다 나를 더 잘 안다"고 답했다.</p>
+        <span class="src">Giphy·Censuswide, 미국 2,000명, 2025</span>
+      </div>
+      <div>
+        <div class="big">70억<small>개 / 하루</small></div>
+        <p>WhatsApp에서만 하루에 오가는 음성 메시지. 듣는 화면은 여전히 파란 막대기 목록이다.</p>
+        <span class="src">WhatsApp 발표, 2022</span>
+      </div>
+      <div>
+        <div class="big">68%</div>
+        <p>'읽음' 표시를 피하려고 메시지를 일부러 안 연 적이 있다. 읽고 답이 없으면 안 읽었을 때보다 "무시당했다"고 느끼는 사람이 1.8배다.</p>
+        <span class="src">Hoyle 외, CHI 2017, 미국 Messenger 사용자 718명</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">시장</p>
+    <h2>아바타로 친구를 보는 데 사람들은 이미 돈을 냅니다</h2>
+    <div class="stat4">
+      <div>
+        <div class="num">20억 명</div>
+        <p>전 세계 Gen&nbsp;Z, 세계 인구의 약 4분의 1</p>
+        <span class="src">World Data Lab, 2024</span>
+      </div>
+      <div>
+        <div class="num">4억 명</div>
+        <p>친구가 아바타로 보이는 Snap&nbsp;Map의 월 사용자</p>
+        <span class="src">Snap, 2025.5</span>
+      </div>
+      <div>
+        <div class="num">2,500만 명</div>
+        <p>Snapchat+ 구독자. "채팅방에 들어온 친구" 표시가 유료 기능이다</p>
+        <span class="src">Snap, 2026.2 · Snapchat 도움말</span>
+      </div>
+      <div>
+        <div class="num">56%</div>
+        <p>현실의 나보다 아바타 꾸미기가 더 중요한 미국·영국 Gen&nbsp;Z</p>
+        <span class="src">Roblox, 2023, 1,545명</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">비교</p>
+    <h2>점이나 아이콘은 있어도, 방 전체를 한 장면으로 보여주는 곳은 없습니다</h2>
+    <table class="cmp">
+      <thead><tr><th>서비스</th><th>대화를 보여주는 방식</th><th>지금 누가 보고 있는지</th></tr></thead>
+      <tbody>
+        <tr><td>WhatsApp · 카카오톡</td><td>말풍선 목록, 음성은 막대기</td><td>숫자 "1", "읽음" 글씨</td></tr>
+        <tr><td>Snapchat+</td><td>말풍선 목록</td><td>채팅 목록에 친구 Bitmoji가 한 명씩 뜬다 (유료)</td></tr>
+        <tr><td>Discord · Gather</td><td>초록 점, 업무용 가상 사무실 속 아바타</td><td>접속 여부만. 대화와 따로 논다</td></tr>
+        <tr><td>Sora&nbsp;cameo</td><td>프롬프트로 만드는 AI 영상</td><td>해당 없음</td></tr>
+        <tr class="us"><td>Scene</td><td>캐릭터들이 원탁에서 진짜 목소리로 대화</td><td>방에 있는 모두가 앉음 / 엎드림 자세로 한눈에</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="two">
+      <div>
+        <p class="eyebrow">리스크와 대응</p>
+        <h2>반짝하고 식지 않으려면</h2>
+        <ul class="list risk">
+          <li><span><b>아바타 메신저는 쉽게 식는다.</b> Bondee는 2023년 2월 아시아 앱스토어 1위였지만 한 달 뒤 다운로드가 260만에서 40만으로 줄었다 (data.ai).<span class="ans">→ 새 친구 목록을 만들게 하지 않는다. 지금 쓰는 단톡방을 원탁으로 가져온다.</span></span></li>
+          <li><span><b>접속 상태가 드러나는 건 부담이다.</b><span class="ans">→ 숫자 대신 몸짓이면 같은 신호도 농담이 된다. 엎드리기를 '방해 금지'로 직접 고르게 한다.</span></span></li>
+          <li><span><b>목소리는 민감한 데이터다.</b><span class="ans">→ 데모는 녹음을 서버로 보내지 않고 기기 안에서만 재생한다.</span></span></li>
+        </ul>
+      </div>
+      <div>
+        <p class="eyebrow">로드맵 · 수익</p>
+        <h2>다음에 할 것</h2>
+        <ul class="list next">
+          <li><span><b>실시간 멀티유저:</b> 친구의 실제 접속 상태대로 앉고 엎드린다</span></li>
+          <li><span><b>대화 가져오기:</b> 지금 쓰는 단톡방을 그대로 원탁으로</span></li>
+          <li><span><b>명장면 클립:</b> 단톡 한 장면을 15초 숏폼으로 공유한다. 결과물이 곧 광고다</span></li>
+          <li><span><b>수익:</b> 캐릭터 아이템과 방 꾸미기. 미국·영국 Gen&nbsp;Z 52%는 아바타 옷에 월 10달러까지 쓸 생각이 있다 (Roblox, 2023)</span></li>
+        </ul>
+        <p class="honest"><b>오늘 데모에서 되는 것:</b> 마이룸 꾸미기, 채팅방 시트, 원탁 몸짓, 내 목소리. 위 로드맵은 아직 없다. <span class="todo">14:45 동결 때 데모와 대조</span></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="team">
+    <div>
+      <h4>팀</h4>
+      <p><span class="todo">팀 이름</span></p>
+      <p class="small">2명 · 하루 만에 기획부터 배포까지</p>
+    </div>
+    <div>
+      <h4>역할</h4>
+      <p class="small"><b><span class="todo">이름</span></b> 원탁 · 대화 재생 · 음성<br /><b><span class="todo">이름</span></b> 3D 캐릭터 · 마이룸</p>
+    </div>
+    <div>
+      <h4>연락처</h4>
+      <p class="small"><span class="todo">이메일</span><br /><span class="todo">데모 링크</span></p>
+    </div>
+  </div>
+
+
+  <div class="foot"><span>Scene · Group chats you can see</span><span>2 / 2</span></div>
+</div>
+
+</body>
+</html>

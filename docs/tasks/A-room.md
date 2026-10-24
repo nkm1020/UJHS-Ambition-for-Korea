@@ -9,7 +9,7 @@
 
 ## 12:15–12:30 스캐폴드
 - [x] ~~`create-next-app`~~ — B가 완료 (`1ca0a14`). **`git pull` 하고 `npm install`만 하면 된다**
-- [ ] `npm run dev` → `/` 에서 캐릭터가 뜨고 pose·face 칩이 눌리는지 확인 (이 임시 화면이 곧 네 참고서다)
+- [ ] `npm run dev` → `/avatar` 에서 캐릭터가 뜨고 pose·face 칩이 눌리는지 확인 (이 임시 화면이 곧 네 참고서다)
 - [ ] `src/lib/types.ts`, `src/lib/avatar.ts`, `src/components/avatar/*` 훑어보기
 
 ## 12:30–13:30 원탁 (SYNC 1 이후)
