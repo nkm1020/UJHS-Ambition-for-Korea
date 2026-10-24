@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import type { AvatarConfig, Room } from "@/lib/types";
 import type { Friend } from "@/data/social";
 import { useMe } from "@/lib/me";
+import { useWeather } from "@/lib/weather";
 import { AvatarStand } from "@/components/avatar";
 import { BottomSheet } from "@/components/sheet/BottomSheet";
 import { RoomCard } from "@/components/sheet/RoomCard";
 import { FriendRow } from "@/components/sheet/FriendRow";
+import { FriendRoom } from "./FriendRoom";
 import { Wardrobe } from "./Wardrobe";
 
 interface MyRoomProps {
@@ -26,11 +28,19 @@ type Tab = "chats" | "friends";
 type EditPhase = "off" | "on" | "closing";
 const SHEET_RETURN_MS = 480;
 
+// Enter finishes the edit. Skip it mid-composition so a Korean syllable
+// being typed isn't cut off.
+function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
+  if (e.key === "Enter" && !e.nativeEvent.isComposing) e.currentTarget.blur();
+}
+
 export function MyRoom({ chats, friends, visited, onOpen }: MyRoomProps) {
-  const { avatar, setAvatar } = useMe();
+  const { me, avatar, setAvatar, setName, setStatus } = useMe();
+  const weather = useWeather();
   const [phase, setPhase] = useState<EditPhase>("off");
   const [draft, setDraft] = useState<AvatarConfig>(avatar);
   const [tab, setTab] = useState<Tab>("chats");
+  const [visiting, setVisiting] = useState<Friend | null>(null);
   const watchingNow = friends.filter((f) => f.presence === "watching").length;
 
   useEffect(() => {
@@ -55,7 +65,36 @@ export function MyRoom({ chats, friends, visited, onOpen }: MyRoomProps) {
       </div>
 
       <header className={`home-bar ${phase !== "off" ? "is-hidden" : ""}`} inert={phase !== "off"}>
-        <span className="wordmark">Scene</span>
+        <div className="home-id">
+          <input
+            className="home-name"
+            value={me.name}
+            placeholder="Your name"
+            aria-label="Your name"
+            maxLength={16}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={(e) => setName(e.target.value.trim())}
+            onKeyDown={blurOnEnter}
+          />
+          {weather && (
+            <p className="home-weather">
+              {Math.round(weather.tempC)}° · {weather.label}
+            </p>
+          )}
+          <input
+            className="home-status"
+            value={me.status}
+            placeholder="Add a one-line intro"
+            aria-label="One-line intro"
+            maxLength={40}
+            autoComplete="off"
+            onChange={(e) => setStatus(e.target.value)}
+            onBlur={(e) => setStatus(e.target.value.trim())}
+            onKeyDown={blurOnEnter}
+          />
+        </div>
         <button className="glass-btn" onClick={startEdit}>
           Edit look
         </button>
@@ -99,12 +138,14 @@ export function MyRoom({ chats, friends, visited, onOpen }: MyRoomProps) {
             </h3>
             <div className="list">
               {friends.map((f) => (
-                <FriendRow key={f.id} friend={f} onOpen={onOpen} />
+                <FriendRow key={f.id} friend={f} onSelect={setVisiting} />
               ))}
             </div>
           </>
         )}
       </BottomSheet>
+
+      {visiting && <FriendRoom friend={visiting} onBack={() => setVisiting(null)} onOpen={onOpen} />}
 
       <Wardrobe open={phase === "on"} draft={draft} onChange={setDraft} onCancel={() => endEdit(false)} onDone={() => endEdit(true)} />
     </div>

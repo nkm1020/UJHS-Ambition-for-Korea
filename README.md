@@ -80,7 +80,17 @@ npm run dev
 
 Open http://localhost:3000. It works best at phone width.
 
-Voice cloning is off unless you set one provider in `.env.local`:
+Keys go in `.env.local` (gitignored; copy `.env.example`), and in the Vercel project's environment variables for the deployed demo. Never commit a file with real values.
+
+The AI summary in "Friday plans" and the AI friend Ari call Claude Sonnet from the server:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Without a key both still work: the room shows a written summary and Ari answers with a fallback line.
+
+Voice cloning is off unless you set one provider:
 
 | Variable | Use |
 |---|---|
@@ -98,7 +108,7 @@ Voice cloning is off unless you set one provider in `.env.local`:
 
 | Path | What |
 |---|---|
-| `src/app/` | Entry page and the `/api/voice` routes |
+| `src/app/` | Entry page and the `/api/voice`, `/api/summary` and `/api/agent` routes |
 | `src/components/myroom/` | My Room and the wardrobe |
 | `src/components/sheet/` | Apple Maps-style bottom sheet, room cards, friends |
 | `src/components/room/` | Round table, bubbles, mic and text composer |

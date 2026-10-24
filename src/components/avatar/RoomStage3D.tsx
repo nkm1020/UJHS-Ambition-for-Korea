@@ -66,6 +66,11 @@ export default function RoomStage3D({
 }: AvatarStageProps) {
   const placed = useMemo(() => place(members), [members]);
   const me = members.find((m) => m.isMe);
+  // Labels and bubbles mount here. Left to itself, drei's <Html> picks its
+  // container from the event source, which connects after the first render;
+  // the switch remounts its React root mid-render and the first seat's
+  // bubbles never show.
+  const overlay = useRef<HTMLDivElement>(null);
   // When the entrance started. The camera starts the clock and the door reads
   // it, so the swing and the walk stay in step.
   const introStart = useRef<number | null>(null);
@@ -76,7 +81,7 @@ export default function RoomStage3D({
   const [ready, setReady] = useState(false);
 
   return (
-    <div className={`stage3d ${ready ? "is-ready" : ""}`}>
+    <div className={`stage3d ${ready ? "is-ready" : ""}`} ref={overlay}>
       <Canvas
         shadows
         dpr={[1, 1.75]}
@@ -114,6 +119,7 @@ export default function RoomStage3D({
             focusId={focusId ?? null}
             getTalkLevel={getTalkLevel}
             bubble={bubbles[p.member.id] ?? null}
+            overlay={overlay}
           />
         ))}
         <CameraRig
@@ -342,12 +348,14 @@ function Seat({
   focusId,
   getTalkLevel,
   bubble,
+  overlay,
 }: {
   placed: Placed;
   all: Placed[];
   focusId: string | null;
   getTalkLevel: (id: string) => number;
   bubble: StageBubble | null;
+  overlay: React.RefObject<HTMLDivElement | null>;
 }) {
   const { member, pos, rotY } = placed;
   const group = useRef<THREE.Group>(null);
@@ -408,13 +416,13 @@ function Seat({
     <group ref={group} position={pos} rotation={[0, rotY, 0]} visible={!gone}>
       <Chair />
       <Avatar config={member.avatar} pose={pose} face={face} seed={member.seat + 1} talkLevel={talkLevel} lookYaw={lookYaw} />
-      <Html position={[0, 1.72, 0]} center zIndexRange={[40, 0]} className="html3d">
+      <Html portal={overlay as React.RefObject<HTMLElement>} position={[0, 1.72, 0]} center zIndexRange={[40, 0]} className="html3d">
         <div className="above" hidden={gone}>
           {emoji && <span className="fx3d">{emoji}</span>}
           {bubble && <Bubble3D bubble={bubble} />}
         </div>
       </Html>
-      <Html position={[0, 0.66, 0.42]} center zIndexRange={[30, 0]} className="html3d">
+      <Html portal={overlay as React.RefObject<HTMLElement>} position={[0, 0.66, 0.42]} center zIndexRange={[30, 0]} className="html3d">
         <span hidden={gone} className={`tag3d ${member.presence === "away" && !member.action ? "is-away" : ""}`}>
           <i className="tag-dot" aria-hidden />
           {member.name}

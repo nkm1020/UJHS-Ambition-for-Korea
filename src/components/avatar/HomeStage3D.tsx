@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";
-import type { AvatarStandProps } from "@/lib/types";
+import type { AvatarStandProps, HomeLook } from "@/lib/types";
+import { skyAt, skyClock, useWeather, type Weather } from "@/lib/weather";
 import { Avatar } from "./Avatar";
-import { ArchWindow, Bench, PALETTE, Plant, RoomReflections, Rug } from "./furniture";
+import { Bench, PALETTE, Plant, RoomReflections, Rug } from "./furniture";
 import { floorboards, paneling, plaster } from "./textures";
+import { WeatherWindow } from "./WeatherWindow";
 
 // My Room: the avatar standing in a small, quiet room. The bottom sheet
 // covers the lower fifth of the screen, so the home shot aims below the
@@ -15,6 +17,20 @@ import { floorboards, paneling, plaster } from "./textures";
 // With `focus` (editing the look) the camera dollies in on an S-curve until
 // the figure fills the space between the edit bar and the color panel, and
 // a horizontal drag turns the figure.
+// The window shows today's real weather, and the room light follows it:
+// cooler under cloud, warm lamplight after dark. A friend's room is the same
+// space in their colours, with one thing lying around that is theirs.
+
+// Only the plaster colours change between rooms; the wood, paneling, rug and
+// plant are the same furniture everywhere.
+const MY_ROOM: HomeLook = {
+  wall: PALETTE.cream,
+  sideWall: "#e6ddcf",
+  floor: "#d6cfc4",
+  rug: "#c4b9a8",
+  bench: "#8d7b66",
+  plant: "#5f7a52",
+};
 
 interface Shot {
   pos: THREE.Vector3;
@@ -83,11 +99,41 @@ function Turntable({ enabled, children }: { enabled: boolean; children: React.Re
   return <group ref={g}>{children}</group>;
 }
 
-function Room() {
+function Dumbbell(props: { position: [number, number, number]; rotation: [number, number, number] }) {
+  return (
+    <group {...props}>
+      <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.022, 0.022, 0.4, 12]} />
+        <meshStandardMaterial color="#9a9aa2" metalness={0.6} roughness={0.35} />
+      </mesh>
+      {[-0.15, 0.15].map((x) => (
+        <mesh key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.085, 0.085, 0.08, 20]} />
+          <meshStandardMaterial color="#2f2f35" roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function PizzaBoxes(props: { position: [number, number, number]; rotation: [number, number, number] }) {
+  return (
+    <group {...props}>
+      {[0, 1].map((i) => (
+        <mesh key={i} position={[0, 0.03 + i * 0.062, 0]} rotation={[0, i * 0.35, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.46, 0.06, 0.46]} />
+          <meshStandardMaterial color={i ? "#d8b47e" : "#c9a26b"} roughness={0.95} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Room({ weather, look }: { weather: Weather | null; look: HomeLook }) {
   const m = useMemo(() => {
     const floor = floorboards([8.75, 8.75]);
-    const wall = plaster([3.5, 1.1], PALETTE.cream);
-    const side = plaster([2, 1.1], "#e6ddcf");
+    const wall = plaster([3.5, 1.1], look.wall);
+    const side = plaster([2, 1.1], look.sideWall);
     const wainscot = paneling([6, 1], PALETTE.sage);
     const std = (s: { map: THREE.Texture; bump: THREE.Texture }, bumpScale: number, roughness: number) =>
       new THREE.MeshStandardMaterial({ map: s.map, bumpMap: s.bump, bumpScale, roughness });
@@ -98,7 +144,7 @@ function Room() {
       wainscot: std(wainscot, 1, 0.7),
       trim: new THREE.MeshStandardMaterial({ color: "#f4eee3", roughness: 0.55 }),
     };
-  }, []);
+  }, [look.wall, look.sideWall]);
 
   return (
     <group>
@@ -129,9 +175,8 @@ function Room() {
         <boxGeometry args={[8, 0.04, 0.05]} />
       </mesh>
 
-      <group position={[1.4, 1.05, -2.36]}>
-        <ArchWindow width={1.15} height={1.75} />
-      </group>
+      {/* upper right of the frame, clear of the header on a narrow phone */}
+      <WeatherWindow weather={weather} position={[0.66, 2.12, -2.4]} />
       <group position={[0, 0, 0.1]}>
         <Rug radius={1.1} />
       </group>
@@ -141,11 +186,61 @@ function Room() {
       <group position={[2.35, 0, -1.75]}>
         <Plant height={1.15} />
       </group>
+      {/* beside the feet, inside the frame on a narrow phone */}
+      {look.prop === "dumbbell" && <Dumbbell position={[0.62, 0.085, 0.3]} rotation={[0, 0.7, 0]} />}
+      {look.prop === "pizza" && <PizzaBoxes position={[-0.68, 0, 0.28]} rotation={[0, -0.4, 0]} />}
     </group>
   );
 }
 
-export default function HomeStage3D({ avatar, focus = false }: AvatarStandProps) {
+// Key and fill follow the real sky: daylight, grey under cloud, gold near
+// sunset, warm lamplight after dark. Levels sit under the environment light.
+function RoomLights({ weather }: { weather: Weather | null }) {
+  const ambient = useRef<THREE.AmbientLight>(null);
+  const key = useRef<THREE.DirectionalLight>(null);
+  const C = useMemo(
+    () => ({
+      day: new THREE.Color("#fff4e6"),
+      overcast: new THREE.Color("#e9eef4"),
+      dusk: new THREE.Color("#ffd8b0"),
+      lamp: new THREE.Color("#ffe6c8"),
+      target: new THREE.Color(),
+    }),
+    [],
+  );
+
+  useFrame((_, dt) => {
+    if (!ambient.current || !key.current) return;
+    const { day, golden } = skyAt(weather, skyClock());
+    const grey = weather ? Math.min(1, weather.cloud * 1.2) * day : 0;
+    const k = 1 - Math.exp(-1.5 * Math.min(dt, 0.1));
+
+    C.target.copy(C.lamp).lerp(C.day, day).lerp(C.overcast, grey * 0.8).lerp(C.dusk, golden * day * 0.7);
+    ambient.current.color.lerp(C.target, k);
+    key.current.color.lerp(C.target, k);
+    ambient.current.intensity += (0.45 + 0.15 * day - 0.08 * grey - ambient.current.intensity) * k;
+    key.current.intensity += (1.5 + 0.6 * day - 0.4 * grey - key.current.intensity) * k;
+  });
+
+  return (
+    <>
+      <ambientLight ref={ambient} intensity={0.55} />
+      <directionalLight
+        ref={key}
+        position={[2.6, 4.5, 2.2]}
+        intensity={2}
+        color="#fff4e6"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+      />
+    </>
+  );
+}
+
+export default function HomeStage3D({ avatar, focus = false, look = MY_ROOM, face = "happy" }: AvatarStandProps) {
+  const weather = useWeather();
   return (
     <Canvas
       shadows
@@ -159,20 +254,11 @@ export default function HomeStage3D({ avatar, focus = false }: AvatarStandProps)
       <Environment resolution={64} environmentIntensity={0.45}>
         <RoomReflections />
       </Environment>
-      <ambientLight intensity={0.55} />
-      <directionalLight
-        position={[2.6, 4.5, 2.2]}
-        intensity={2}
-        color="#fff4e6"
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
-      />
+      <RoomLights weather={weather} />
       <directionalLight position={[-3, 2.2, 1.5]} intensity={0.35} color="#dfe6ff" />
-      <Room />
+      <Room weather={weather} look={look} />
       <Turntable enabled={focus}>
-        <Avatar config={avatar} pose="idle" face="happy" seed={7} />
+        <Avatar config={avatar} pose="idle" face={face} seed={7} />
       </Turntable>
       <ContactShadows position={[0, 0.008, 0]} opacity={0.38} scale={4} blur={2.4} far={2} />
     </Canvas>

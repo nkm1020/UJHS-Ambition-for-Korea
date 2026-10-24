@@ -29,6 +29,15 @@ export interface UserMessage {
   text?: string;
 }
 
+/** A reply still being written (the AI room). Its actor shows "typing" until it lands. */
+export interface PendingReply {
+  actorId: string;
+  beats: Promise<Beat[]>;
+}
+
+type QueueItem = Beat | PendingReply;
+const isPending = (item: QueueItem): item is PendingReply => "beats" in item;
+
 const ACTION_MS: Record<ActionName, number> = {
   walk_in: 3200, // the door opens, then the camera walks to my seat (RoomStage3D INTRO_MS)
   sit_up: 500,
@@ -60,6 +69,7 @@ const PRESENCE_AT_END: Partial<Record<ActionName, Presence>> = {
 };
 
 const GAP_MS = 260;
+const MIN_TYPING_MS = 700; // so a fast reply still reads as typing
 
 function textMs(text?: string): number {
   return Math.max(1500, (text?.length ?? 0) * 60);
@@ -81,7 +91,7 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
   const presenceRef = useRef<Record<string, Presence>>(initialLive(room).presence);
   const levels = useRef(new Map<string, number>());
   const fakeTalk = useRef(new Set<string>());
-  const queue = useRef<Beat[]>([]);
+  const queue = useRef<QueueItem[]>([]);
   const running = useRef(false);
   const generation = useRef(0);
   const keySeq = useRef(1);
@@ -231,20 +241,42 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
     [room, seatOf, setPresence],
   );
 
+  // Show the actor typing until their reply arrives, then play it next.
+  const awaitReply = useCallback(async (pending: PendingReply, gen: number) => {
+    const actor = pending.actorId;
+    const typing = keySeq.current++;
+    setLive((s) => ({
+      ...s,
+      focus: actor,
+      focusGroup: [actor],
+      bubbles: { ...s.bubbles, [actor]: { key: typing, kind: "typing" } },
+    }));
+    const [beats] = await Promise.all([
+      pending.beats,
+      new Promise<void>((r) => setTimeout(r, MIN_TYPING_MS)),
+    ]);
+    if (gen !== generation.current) return;
+    setLive((s) =>
+      s.bubbles[actor]?.key === typing ? { ...s, bubbles: { ...s.bubbles, [actor]: null } } : s,
+    );
+    queue.current.unshift(...beats);
+  }, []);
+
   const run = useCallback(async () => {
     if (running.current) return;
     running.current = true;
     const gen = generation.current;
     setLive((s) => ({ ...s, busy: true }));
     while (queue.current.length > 0 && gen === generation.current) {
-      const beat = queue.current.shift()!;
-      await playBeat(beat, gen);
+      const item = queue.current.shift()!;
+      if (isPending(item)) await awaitReply(item, gen);
+      else await playBeat(item, gen);
     }
     if (gen === generation.current) {
       running.current = false;
       setLive((s) => ({ ...s, busy: false, scriptDone: true, action: clearActions(s.action) }));
     }
-  }, [playBeat]);
+  }, [playBeat, awaitReply]);
 
   const stop = useCallback(() => {
     generation.current++;
@@ -270,13 +302,18 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
     void run();
   }, [room, run, stop]);
 
+  /** Plays my message, then either `reply` (AI room) or the room's scripted reaction. */
   const send = useCallback(
-    (msg: UserMessage) => {
+    (msg: UserMessage, reply?: PendingReply) => {
       if (!msg.audioUrl && !msg.text) return;
-      const reactions = room.onUserMessage;
-      const n = userMessages.current++;
-      const reply = reactions.length > 0 ? reactions[Math.min(n, reactions.length - 1)] : [];
-      queue.current.push({ actorId: "me", action: "talk", audio: msg.audioUrl, text: msg.text }, ...reply);
+      queue.current.push({ actorId: "me", action: "talk", audio: msg.audioUrl, text: msg.text });
+      if (reply) {
+        queue.current.push(reply);
+      } else {
+        const reactions = room.onUserMessage;
+        const n = userMessages.current++;
+        if (reactions.length > 0) queue.current.push(...reactions[Math.min(n, reactions.length - 1)]);
+      }
       void run();
     },
     [room, run],
