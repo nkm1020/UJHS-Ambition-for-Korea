@@ -31,7 +31,7 @@ Scene puts those signals back on the characters, as body language:
 | You can't tell who is looking right now | 🪑 Whoever is watching sits up. Everyone else is slumped on the table |
 | "Read 9:41" and no reply | 👀 They lift their head, stare at you, and slump back down |
 | A reply three hours later | 💦 They jolt upright |
-| "Leo left the chat" | 🚪 They push the chair back and walk out. The seat stays empty |
+| "Leo left the chat" | 🚪 They push the chair back and walk out |
 | "This message was deleted" | ✋ They clap a hand over their mouth mid-sentence |
 
 ## Where it started
