@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, type ThreeElements } from "@react-three/fiber";
 import * as THREE from "three";
 import { skyAt, skyClock, type Weather } from "@/lib/weather";
 
@@ -12,6 +12,11 @@ import { skyAt, skyClock, type Weather } from "@/lib/weather";
 // Values ease toward their targets, so the view crossfades when the forecast
 // arrives instead of snapping. A light at the glass carries the outside
 // colour (and the lightning) into the room.
+//
+// The round-table room reuses the same sky through three arched windows:
+// useSkyUniforms drives one shared set of uniforms, and each pane looks at
+// its own slice of one panorama (uOffset/uSpan, in window widths), so the
+// skyline runs on from window to window and the sun crosses them in a day.
 
 const W = 0.84; // glass opening
 const H = 1.04;
@@ -43,6 +48,8 @@ const fragment = /* glsl */ `
   uniform vec2 uSun;
   uniform vec2 uMoon;
   uniform float uMoonPhase;
+  uniform float uOffset; // where this pane starts in the panorama, in window widths
+  uniform float uSpan; // the panorama's width, in window widths (1 = a lone window)
 
   float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -108,8 +115,10 @@ const fragment = /* glsl */ `
   }
 
   void main() {
-    vec2 uv = vUv;
+    vec2 uv = vec2(uOffset + vUv.x, vUv.y); // the view; glass effects below use vUv
     vec2 asp = vec2(uAspect, 1.0);
+    vec2 sunAt = vec2(uSun.x * uSpan, uSun.y);
+    vec2 moonAt = vec2(uMoon.x * uSpan, uMoon.y);
     float g = uGolden * smoothstep(0.0, 0.6, uDay);
     float overcast = smoothstep(0.45, 1.0, uCloud);
 
@@ -143,13 +152,13 @@ const fragment = /* glsl */ `
 
     // sun
     vec3 sunCol = mix(vec3(1.0, 0.97, 0.88), vec3(1.0, 0.72, 0.45), g);
-    float ds = length((uv - uSun) * asp);
+    float ds = length((uv - sunAt) * asp);
     float sunUp = smoothstep(0.0, 0.35, uDay) * veil;
     col += sunCol * (exp(-ds * 7.0) * 0.55 + exp(-ds * 2.5) * 0.15) * sunUp;
     col = mix(col, sunCol * 1.05, over(0.07, 0.004, ds) * sunUp * (1.0 - cloud * 0.9));
 
     // moon, with today's phase
-    vec2 ml = (uv - uMoon) * asp / 0.05;
+    vec2 ml = (uv - moonAt) * asp / 0.05;
     float moonUp = (1.0 - smoothstep(0.1, 0.5, uDay)) * veil * (1.0 - cloud * 0.9);
     float k = cos(6.2831853 * uMoonPhase) * sqrt(max(0.0, 1.0 - ml.y * ml.y));
     float lit = uMoonPhase < 0.5 ? smoothstep(k - 0.08, k + 0.08, ml.x) : over(-k, 0.08, ml.x);
@@ -203,10 +212,10 @@ const fragment = /* glsl */ `
 
     // glass: a soft diagonal sheen, a faint room reflection at night, and
     // the frame's shadow around the edge (heaviest under the top bar)
-    float d = uv.x * 0.8 + uv.y;
+    float d = vUv.x * 0.8 + vUv.y;
     col += (0.06 * over(0.0, 0.25, abs(d - 1.2)) + 0.04 * over(0.0, 0.07, abs(d - 1.45))) * (0.5 + 0.5 * uDay);
     col += vec3(0.05, 0.04, 0.03) * (1.0 - uDay);
-    float edge = min(min(uv.x, 1.0 - uv.x) * uAspect, min(uv.y, (1.0 - uv.y) * 0.6));
+    float edge = min(min(vUv.x, 1.0 - vUv.x) * uAspect, min(vUv.y, (1.0 - vUv.y) * 0.6));
     col *= mix(0.76, 1.0, smoothstep(0.0, 0.05, edge));
 
     gl_FragColor = vec4(col, 1.0);
@@ -215,47 +224,41 @@ const fragment = /* glsl */ `
 
 const ease = (dt: number, rate = 1.5) => 1 - Math.exp(-rate * dt);
 
-export function WeatherWindow({
-  weather,
-  position,
-}: {
-  weather: Weather | null;
-  position: [number, number, number];
-}) {
-  const mat = useRef<THREE.ShaderMaterial>(null);
-  const light = useRef<THREE.PointLight>(null);
-  const snowCap = useRef<THREE.Mesh>(null);
+export type SkyUniforms = ReturnType<typeof makeSkyUniforms>;
+
+function makeSkyUniforms(weather: Weather | null, aspect: number) {
+  const sky = skyAt(weather, skyClock());
+  return {
+    uTime: { value: 0 },
+    uAspect: { value: aspect },
+    uDay: { value: sky.day },
+    uGolden: { value: sky.golden },
+    uCloud: { value: weather?.cloud ?? 0.2 },
+    uRain: { value: weather?.rain ?? 0 },
+    uSnow: { value: weather?.snow ?? 0 },
+    uFog: { value: weather?.fog ?? 0 },
+    uFlash: { value: 0 },
+    uDrift: { value: 0 },
+    uSun: { value: new THREE.Vector2(...sky.sun) },
+    uMoon: { value: new THREE.Vector2(...sky.moon) },
+    uMoonPhase: { value: sky.moonPhase },
+  };
+}
+
+/**
+ * One live sky: uniforms that ease toward the real sun and the forecast every
+ * frame, lightning included. Share them between panes so they all agree.
+ */
+export function useSkyUniforms(weather: Weather | null, aspect: number): SkyUniforms {
   const strike = useRef({ next: 2, at: -10 });
-
   // start from the weather already known (back from a chat), not a clear sky
-  const [uniforms] = useState(() => {
-    const sky = skyAt(weather, skyClock());
-    return {
-      uTime: { value: 0 },
-      uAspect: { value: W / H },
-      uDay: { value: sky.day },
-      uGolden: { value: sky.golden },
-      uCloud: { value: weather?.cloud ?? 0.2 },
-      uRain: { value: weather?.rain ?? 0 },
-      uSnow: { value: weather?.snow ?? 0 },
-      uFog: { value: weather?.fog ?? 0 },
-      uFlash: { value: 0 },
-      uDrift: { value: 0 },
-      uSun: { value: new THREE.Vector2(...sky.sun) },
-      uMoon: { value: new THREE.Vector2(...sky.moon) },
-      uMoonPhase: { value: sky.moonPhase },
-    };
-  });
-
+  const [uniforms] = useState(() => makeSkyUniforms(weather, aspect));
+  // the frame loop writes through a ref, the way three.js expects uniforms to change
+  const live = useRef(uniforms);
   const at = useMemo(() => new THREE.Vector2(), []);
-  const tint = useMemo(() => new THREE.Color(), []);
-  const DAY = useMemo(() => new THREE.Color("#dcebff"), []);
-  const DUSK = useMemo(() => new THREE.Color("#ffbf8a"), []);
-  const NIGHT = useMemo(() => new THREE.Color("#5b6c96"), []);
 
   useFrame((state, dt) => {
-    const u = mat.current?.uniforms;
-    if (!u) return;
+    const u = live.current;
     const d = Math.min(dt, 0.1);
     const t = state.clock.elapsedTime;
     const sky = skyAt(weather, skyClock());
@@ -282,23 +285,60 @@ export function WeatherWindow({
     const since = t - s.at;
     const flash = Math.exp(-since * 14) + (since > 0.16 ? 0.7 * Math.exp(-(since - 0.16) * 10) : 0);
     u.uFlash.value = weather?.storm ? flash : 0;
+  });
 
-    // outside light through the glass
-    if (light.current) {
-      const day = u.uDay.value;
-      const golden = u.uGolden.value * Math.min(1, day / 0.6);
-      tint.copy(NIGHT).lerp(DAY, day).lerp(DUSK, golden * 0.8);
-      tint.lerp(DAY, u.uFlash.value);
-      light.current.color.copy(tint);
-      light.current.intensity = (0.35 + 1.6 * day) * (1 - 0.45 * u.uCloud.value * u.uCloud.value) + 6 * u.uFlash.value;
-    }
-    // snow settles on the sill while it snows
-    if (snowCap.current) {
-      const cap = snowCap.current.scale.y;
-      const want = (weather?.snow ?? 0) > 0 ? 1 : 0.001;
-      snowCap.current.scale.y = cap + (want - cap) * ease(d, 0.4);
-      snowCap.current.visible = snowCap.current.scale.y > 0.01;
-    }
+  return uniforms;
+}
+
+/** A pane's material: the shared sky, seen from `offset` in a panorama `span` windows wide. */
+export function makeSkyMaterial(sky: SkyUniforms, offset = 0, span = 1) {
+  return new THREE.ShaderMaterial({
+    vertexShader: vertex,
+    fragmentShader: fragment,
+    uniforms: { ...sky, uOffset: { value: offset }, uSpan: { value: span } },
+  });
+}
+
+/** Outside light coming in through the glass: its colour follows the sky, and it flashes with lightning. */
+export function SkyGlow({ sky, strength = 1, ...props }: { sky: SkyUniforms; strength?: number } & ThreeElements["pointLight"]) {
+  const light = useRef<THREE.PointLight>(null);
+  const tint = useMemo(() => new THREE.Color(), []);
+  const DAY = useMemo(() => new THREE.Color("#dcebff"), []);
+  const DUSK = useMemo(() => new THREE.Color("#ffbf8a"), []);
+  const NIGHT = useMemo(() => new THREE.Color("#5b6c96"), []);
+
+  useFrame(() => {
+    if (!light.current) return;
+    const day = sky.uDay.value;
+    const golden = sky.uGolden.value * Math.min(1, day / 0.6);
+    tint.copy(NIGHT).lerp(DAY, day).lerp(DUSK, golden * 0.8);
+    tint.lerp(DAY, sky.uFlash.value);
+    light.current.color.copy(tint);
+    light.current.intensity =
+      ((0.35 + 1.6 * day) * (1 - 0.45 * sky.uCloud.value * sky.uCloud.value) + 6 * sky.uFlash.value) * strength;
+  });
+
+  return <pointLight ref={light} intensity={1.2} {...props} />;
+}
+
+export function WeatherWindow({
+  weather,
+  position,
+}: {
+  weather: Weather | null;
+  position: [number, number, number];
+}) {
+  const sky = useSkyUniforms(weather, W / H);
+  const pane = useMemo(() => makeSkyMaterial(sky), [sky]);
+  const snowCap = useRef<THREE.Mesh>(null);
+
+  // snow settles on the sill while it snows
+  useFrame((_, dt) => {
+    if (!snowCap.current) return;
+    const cap = snowCap.current.scale.y;
+    const want = (weather?.snow ?? 0) > 0 ? 1 : 0.001;
+    snowCap.current.scale.y = cap + (want - cap) * ease(Math.min(dt, 0.1), 0.4);
+    snowCap.current.visible = snowCap.current.scale.y > 0.01;
   });
 
   const frame = <meshStandardMaterial color="#f7f3ec" roughness={0.6} />;
@@ -306,9 +346,8 @@ export function WeatherWindow({
 
   return (
     <group position={position}>
-      <mesh position={[0, 0, 0.012]}>
+      <mesh position={[0, 0, 0.012]} material={pane}>
         <planeGeometry args={[W, H]} />
-        <shaderMaterial ref={mat} vertexShader={vertex} fragmentShader={fragment} uniforms={uniforms} />
       </mesh>
 
       {/* frame, then a cross of glazing bars */}
@@ -364,7 +403,7 @@ export function WeatherWindow({
         ))}
       </group>
 
-      <pointLight ref={light} position={[0, 0, 0.6]} distance={4.5} decay={1.6} intensity={1.2} />
+      <SkyGlow sky={sky} position={[0, 0, 0.6]} distance={4.5} decay={1.6} />
     </group>
   );
 }

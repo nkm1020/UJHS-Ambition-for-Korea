@@ -183,8 +183,11 @@ function archShape(w: number, h: number, inset = 0): THREE.Shape {
   return s;
 }
 
-/** An arched window onto a dusk sky. Origin at the sill, facing +z. */
-export function ArchWindow({ width = 1.1, height = 1.7 }: { width?: number; height?: number }) {
+/**
+ * An arched window. Origin at the sill, facing +z. The pane shows a painted
+ * dusk unless `sky` hands it a live one; its UVs run 0–1 across the arch.
+ */
+export function ArchWindow({ width = 1.1, height = 1.7, sky }: { width?: number; height?: number; sky?: THREE.Material }) {
   const parts = useMemo(() => {
     const ft = 0.07;
     const pane = new THREE.ShapeGeometry(archShape(width, height, ft), 24);
@@ -206,7 +209,7 @@ export function ArchWindow({ width = 1.1, height = 1.7 }: { width?: number; heig
 
   return (
     <group>
-      <mesh geometry={parts.pane} material={parts.sky} position={[0, 0, 0.01]} />
+      <mesh geometry={parts.pane} material={sky ?? parts.sky} position={[0, 0, 0.01]} />
       <mesh geometry={parts.frame} material={parts.paint} castShadow />
       {/* mullions */}
       <mesh position={[0, height / 2, 0.04]} material={parts.paint}>

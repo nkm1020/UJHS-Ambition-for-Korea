@@ -10,6 +10,8 @@ import { Avatar } from "./Avatar";
 import { TABLE_TOP_Y } from "./shape";
 import { ArchWindow, Chair, PALETTE, PendantLamp, Plant, RoomReflections } from "./furniture";
 import { floorboards, paintedWood, paneling, plaque, plaster, woodGrain } from "./textures";
+import { useWeather, type Weather } from "@/lib/weather";
+import { SkyGlow, makeSkyMaterial, useSkyUniforms, type SkyUniforms } from "./WeatherWindow";
 
 // First-person round table. I sit on the near side (the camera is my head);
 // everyone else sits around the far arc facing the middle. On entry I stand
@@ -66,6 +68,7 @@ export default function RoomStage3D({
 }: AvatarStageProps) {
   const placed = useMemo(() => place(members), [members]);
   const me = members.find((m) => m.isMe);
+  const weather = useWeather();
   // Labels and bubbles mount here. Left to itself, drei's <Html> picks its
   // container from the event source, which connects after the first render;
   // the switch remounts its React root mid-render and the first seat's
@@ -93,21 +96,9 @@ export default function RoomStage3D({
         <Environment resolution={64} environmentIntensity={0.5}>
           <RoomReflections />
         </Environment>
-        <Room />
+        <Surroundings weather={weather} />
         <Entrance title={title} getIntroStart={getIntroStart} />
-        <ambientLight intensity={0.55} />
-        <directionalLight
-          position={[2.2, 5, 2.6]}
-          intensity={1.7}
-          color="#fff3e2"
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-          shadow-bias={-0.0004}
-          shadow-normalBias={0.02}
-        />
         <directionalLight position={[-3, 2.5, -2]} intensity={0.45} color="#dfe5ff" />
-        {/* the pendant over the table */}
-        <pointLight position={[0, 2.25, 0]} intensity={7} distance={6.5} decay={1.6} color="#ffe2b8" />
         {/* a warm sconce in the hallway so the door reads before it opens */}
         <pointLight position={[0, 3.1, WALL_Z + 1.4]} intensity={7} distance={5} decay={1.3} color="#ffd9a8" />
         <Table />
@@ -147,7 +138,80 @@ const surface = (s: { map: THREE.Texture; bump: THREE.Texture }, bumpScale: numb
 const ROOM_R = 5.6;
 const ROOM_H = 3.5;
 
-function Room() {
+// The three arched windows behind the far arc look out on today's real
+// weather, the same sky as the My Room window. They share one panorama, a
+// little wider than the three panes so the walls between them hide a slice:
+// the skyline runs on from pane to pane and the sun crosses them in a day.
+const WINDOW = { w: 1.1, h: 1.85 };
+const WINDOW_DEG = [-34, 0, 34];
+const PANE_STEP = 1.3; // window widths from one pane's left edge to the next
+const PANORAMA = PANE_STEP * (WINDOW_DEG.length - 1) + 1;
+
+/** The room and its light, both following today's sky outside. */
+function Surroundings({ weather }: { weather: Weather | null }) {
+  const sky = useSkyUniforms(weather, WINDOW.w / WINDOW.h);
+  return (
+    <>
+      <Room sky={sky} />
+      <RoomLights sky={sky} />
+    </>
+  );
+}
+
+// Same idea as My Room: daylight by day, greyer under cloud, gold near
+// sunset; after dark the room dims and the pendant over the table takes over.
+// Reads the window's eased sky, so the light changes as smoothly as the view.
+function RoomLights({ sky }: { sky: SkyUniforms }) {
+  const ambient = useRef<THREE.AmbientLight>(null);
+  const key = useRef<THREE.DirectionalLight>(null);
+  const lamp = useRef<THREE.PointLight>(null);
+  const C = useMemo(
+    () => ({
+      day: new THREE.Color("#fff3e2"),
+      overcast: new THREE.Color("#e9eef4"),
+      dusk: new THREE.Color("#ffd8b0"),
+      night: new THREE.Color("#ffdcb4"),
+      mix: new THREE.Color(),
+    }),
+    [],
+  );
+
+  useFrame(({ scene }) => {
+    if (!ambient.current || !key.current || !lamp.current) return;
+    const day = sky.uDay.value;
+    const grey = Math.min(1, sky.uCloud.value * 1.2) * day;
+    const golden = sky.uGolden.value * day;
+    C.mix.copy(C.night).lerp(C.day, day).lerp(C.overcast, grey * 0.8).lerp(C.dusk, golden * 0.7);
+    ambient.current.color.copy(C.mix);
+    key.current.color.copy(C.mix);
+    ambient.current.intensity = 0.22 + 0.36 * day - 0.06 * grey;
+    key.current.intensity = 0.45 + 1.35 * day - 0.35 * grey;
+    lamp.current.intensity = 7 + 7 * (1 - day);
+    // the soft reflections dim with the daylight too, or night never reads
+    scene.environmentIntensity = 0.24 + 0.26 * day;
+  });
+
+  return (
+    <>
+      <ambientLight ref={ambient} intensity={0.55} />
+      <directionalLight
+        ref={key}
+        position={[2.2, 5, 2.6]}
+        intensity={1.7}
+        color="#fff3e2"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+      />
+      {/* the pendant over the table */}
+      <pointLight ref={lamp} position={[0, 2.25, 0]} intensity={7} distance={6.5} decay={1.6} color="#ffe2b8" />
+    </>
+  );
+}
+
+function Room({ sky }: { sky: SkyUniforms }) {
+  const panes = useMemo(() => WINDOW_DEG.map((_, i) => makeSkyMaterial(sky, i * PANE_STEP, PANORAMA)), [sky]);
   const m: Mats = useMemo(
     () => ({
       floor: surface(floorboards([7, 7]), 0.8, 0.6),
@@ -180,15 +244,16 @@ function Room() {
       <mesh position={[0, ROOM_H, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.ceiling}>
         <circleGeometry args={[ROOM_R, 96]} />
       </mesh>
-      {/* three arched windows behind the far arc */}
-      {[-34, 0, 34].map((deg) => {
+      {WINDOW_DEG.map((deg, i) => {
         const a = THREE.MathUtils.degToRad(deg);
         return (
           <group key={deg} position={[Math.sin(a) * (ROOM_R - 0.08), 1.1, -Math.cos(a) * (ROOM_R - 0.08)]} rotation={[0, -a, 0]}>
-            <ArchWindow width={1.1} height={1.85} />
+            <ArchWindow width={WINDOW.w} height={WINDOW.h} sky={panes[i]} />
           </group>
         );
       })}
+      {/* the outside light (and any lightning) falling in across the table */}
+      <SkyGlow sky={sky} strength={1.6} position={[0, 2.1, -4.2]} distance={7.5} decay={1.4} />
       {[-1, 1].map((s) => (
         <group key={s} position={[s * 3.3, 0, -3.7]} rotation={[0, s * 0.8, 0]}>
           <Plant height={1.5} />
