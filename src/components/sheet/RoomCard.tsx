@@ -16,18 +16,27 @@ export function RoomCard({ room, unread, hint, onOpen }: RoomCardProps) {
   const others = room.members.filter((m) => m.id !== "me");
   const watching = others.filter((m) => m.startsAs === "watching").length;
   const away = others.length - watching;
+  const dm = room.kind === "dm" || others.length === 1;
 
   return (
     <button className="chat-row" onClick={() => onOpen(room.id)}>
-      <span className="heads" aria-hidden>
-        {others.slice(0, 3).map((m) => (
-          <span
-            key={m.id}
-            className={`head ${m.startsAs === "watching" ? "" : "is-away"}`}
-            style={{ "--c": m.avatar.body } as React.CSSProperties}
-          />
-        ))}
-      </span>
+      {dm ? (
+        <span
+          className={`head solo ${watching ? "" : "is-away"}`}
+          style={{ "--c": others[0]?.avatar.body } as React.CSSProperties}
+          aria-hidden
+        />
+      ) : (
+        <span className="heads" aria-hidden>
+          {others.slice(0, 3).map((m) => (
+            <span
+              key={m.id}
+              className={`head ${m.startsAs === "watching" ? "" : "is-away"}`}
+              style={{ "--c": m.avatar.body } as React.CSSProperties}
+            />
+          ))}
+        </span>
+      )}
       <span className="chat-body">
         <span className="chat-top">
           <strong>
@@ -37,9 +46,23 @@ export function RoomCard({ room, unread, hint, onOpen }: RoomCardProps) {
         </span>
         <span className="chat-preview">{room.preview}</span>
         <span className="chat-meta">
-          <i className="live-dot" /> {watching} watching
-          <span className="sep">·</span>
-          {away} away
+          {dm ? (
+            watching ? (
+              <>
+                <i className="live-dot" /> Watching now
+              </>
+            ) : (
+              <>
+                <i className="away-dot" /> Away
+              </>
+            )
+          ) : (
+            <>
+              <i className="live-dot" /> {watching} watching
+              <span className="sep">·</span>
+              {away} away
+            </>
+          )}
         </span>
       </span>
       {hint && <span className="row-hint">Start here</span>}

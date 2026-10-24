@@ -18,6 +18,7 @@ interface Live {
   bubbles: Record<string, Bubble | null>;
   caption: { text: string; key: number } | null;
   focus: string | null; // who the first-person camera turns to
+  focusGroup: string[]; // everyone in this beat; two or more means a wide shot
   cuts: { key: number; text: string }[]; // captioned moments, newest last, at most 4
   busy: boolean;
   scriptDone: boolean;
@@ -71,7 +72,7 @@ function initialLive(room: Room): Live {
     presence[m.id] = m.id === "me" ? "gone" : m.startsAs;
     action[m.id] = { name: null, key: 0 };
   }
-  return { presence, action, look: {}, bubbles: {}, caption: null, focus: null, cuts: [], busy: false, scriptDone: false };
+  return { presence, action, look: {}, bubbles: {}, caption: null, focus: null, focusGroup: [], cuts: [], busy: false, scriptDone: false };
 }
 
 export function usePlayer(room: Room, myAvatar: AvatarConfig) {
@@ -154,6 +155,7 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
           caption,
           cuts: caption ? [...s.cuts, caption].slice(-4) : s.cuts,
           focus: beat.action === "walk_in" ? null : actor,
+          focusGroup: groupFor(beat, room, presenceRef.current),
         };
       });
 
@@ -305,6 +307,7 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
     bubbles: live.bubbles,
     caption: live.caption,
     focusId: live.focus,
+    focusGroup: live.focusGroup,
     cuts: live.cuts,
     busy: live.busy,
     scriptDone: live.scriptDone,
@@ -314,6 +317,17 @@ export function usePlayer(room: Room, myAvatar: AvatarConfig) {
     stop,
     send,
   };
+}
+
+// Who belongs in frame for a beat: the actor and anyone reacting. When I
+// talk, everyone still at the table is reacting to me, so frame them all.
+function groupFor(beat: Beat, room: Room, presence: Record<string, Presence>): string[] {
+  if (beat.action === "walk_in") return [];
+  if (beat.actorId === "me") {
+    return room.members.filter((m) => m.id !== "me" && presence[m.id] !== "gone").map((m) => m.id);
+  }
+  const ids = [beat.actorId, ...(beat.reactions ?? []).map((r) => r.actorId)].filter((id) => id !== "me");
+  return [...new Set(ids)];
 }
 
 function clearActions(action: Record<string, ActionState>): Record<string, ActionState> {

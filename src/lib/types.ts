@@ -80,7 +80,8 @@ export interface Room {
   emoji: string;
   preview: string;
   unread: number;
-  backdrop?: string;     // 부스 배경막 색. 방의 정체성 색이자 원탁 방의 벽 색
+  backdrop?: string;     // 방의 정체성 색 (선택)
+  kind?: 'group' | 'dm'; // 1:1 채팅이면 'dm'. 없으면 멤버 수로 판단
   members: Member[];
   script: Beat[];
   onUserMessage: Beat[][];
@@ -165,6 +166,8 @@ export interface AvatarStageProps {
   members: StageMember[];
   /** 카메라(1인칭 시선)가 향할 멤버. null이나 'me'면 테이블 가운데 */
   focusId?: string | null;
+  /** 지금 비트에 함께 등장하는 멤버들. 2명 이상이면 카메라가 줌아웃해서 다 담는다 */
+  focusGroup?: string[];
   /** 3D 무대가 머리 위에 그릴 말풍선. 2D 무대는 무시한다 */
   bubbles?: Record<string, StageBubble | null>;
   /** 방의 배경막 색 */

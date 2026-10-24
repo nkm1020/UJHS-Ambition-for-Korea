@@ -6,18 +6,21 @@ import { startSTT } from "@/lib/stt";
 import { unlockAudio } from "@/lib/player/audio";
 import type { UserMessage } from "@/lib/player/usePlayer";
 import { IconMic, IconSend, IconStop } from "@/components/icons";
+import { speakAs } from "@/lib/voice";
 
 interface ComposerProps {
   onSend: (msg: UserMessage) => void;
+  voiceId?: string | null;
   nudge: boolean;
 }
 
-export function Composer({ onSend, nudge }: ComposerProps) {
+export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
   const [text, setText] = useState("");
   const [micOk, setMicOk] = useState(canRecord);
   const [recStartedAt, setRecStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [speaking, setSpeaking] = useState(false);
   const recorder = useRef<Recorder | null>(null);
   const stt = useRef<ReturnType<typeof startSTT>>(null);
   const starting = useRef(false);
@@ -68,13 +71,22 @@ export function Composer({ onSend, nudge }: ComposerProps) {
     }
   };
 
-  const submit = (e: React.FormEvent) => {
+  // Typed text is spoken in my cloned voice when I have one; if cloning is
+  // slow or down, the message still goes out as a bubble.
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t) return;
+    if (!t || speaking) return;
     unlockAudio();
-    onSend({ text: t });
     setText("");
+    if (!voiceId) {
+      onSend({ text: t });
+      return;
+    }
+    setSpeaking(true);
+    const audioUrl = await speakAs(voiceId, t);
+    setSpeaking(false);
+    onSend({ text: t, audioUrl: audioUrl ?? undefined });
   };
 
   const recording = recStartedAt !== null;
@@ -82,7 +94,8 @@ export function Composer({ onSend, nudge }: ComposerProps) {
   return (
     <div className="composer">
       {toast && <div className="toast">{toast}</div>}
-      {!toast && nudge && !recording && (
+      {speaking && <div className="nudge">Saying it in your voice…</div>}
+      {!toast && !speaking && nudge && !recording && (
         <div className="nudge">{micOk ? "Your turn. Tap the mic and say something." : "Your turn. Type something."}</div>
       )}
       <form className="composer-row" onSubmit={submit}>

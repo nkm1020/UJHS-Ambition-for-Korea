@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 // Apple Maps style sheet: peek -> half -> full. Drag the header, or tap it to
 // step up. The list scrolls only when fully open.
 
-const PEEK = 172;
+const PEEK = 214;
 const SNAPS = [PEEK, 0.56, 0.9] as const; // px for peek, fractions of the frame after
 
 interface BottomSheetProps {

@@ -42,7 +42,7 @@ function place(members: StageMember[]): Placed[] {
   });
 }
 
-export default function RoomStage3D({ members, getTalkLevel, focusId, bubbles = {} }: AvatarStageProps) {
+export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup = [], bubbles = {} }: AvatarStageProps) {
   const placed = useMemo(() => place(members), [members]);
   const me = members.find((m) => m.isMe);
 
@@ -65,7 +65,12 @@ export default function RoomStage3D({ members, getTalkLevel, focusId, bubbles = 
             bubble={bubbles[p.member.id] ?? null}
           />
         ))}
-        <CameraRig placed={placed} focusId={focusId ?? null} introKey={me?.action === "walk_in" ? me.actionKey : 0} />
+        <CameraRig
+          placed={placed}
+          focusId={focusId ?? null}
+          focusGroup={focusGroup}
+          introKey={me?.action === "walk_in" ? me.actionKey : 0}
+        />
       </Canvas>
     </div>
   );
@@ -253,32 +258,99 @@ function Bubble3D({ bubble }: { bubble: StageBubble }) {
   );
 }
 
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+// S-curve: slow out, fast through the middle, slow in. Every camera move
+// (the walk-in and every change of shot) uses it.
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-function CameraRig({ placed, focusId, introKey }: { placed: Placed[]; focusId: string | null; introKey: number }) {
-  const look = useRef(TABLE_MIDDLE.clone());
+const SHOT_MS = 1150;
+const BASE_FOV = 58;
+
+interface Shot {
+  pos: THREE.Vector3;
+  look: THREE.Vector3;
+  fov: number;
+}
+
+function headOf(p: Placed): THREE.Vector3 {
+  const slumped = p.member.presence === "away" && !p.member.action;
+  return new THREE.Vector3(p.pos.x * 0.92, slumped ? 0.85 : HEAD_Y, p.pos.z * 0.92);
+}
+
+// One person: stay in my seat and turn to them. Two or more: lean back and
+// widen until everyone in the beat fits.
+function shotFor(targets: Placed[]): Shot {
+  if (targets.length === 0) return { pos: MY_SEAT.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV };
+  if (targets.length === 1) return { pos: MY_SEAT.clone(), look: headOf(targets[0]), fov: BASE_FOV - 6 };
+  const heads = targets.map(headOf);
+  const look = heads.reduce((a, h) => a.add(h), new THREE.Vector3()).multiplyScalar(1 / heads.length);
+  const spread = Math.max(...heads.map((h) => h.x)) - Math.min(...heads.map((h) => h.x));
+  const back = 0.7 + spread * 0.35;
+  return {
+    pos: new THREE.Vector3(look.x * 0.15, EYE_Y + 0.25 + spread * 0.08, SEAT_R + 0.1 + back),
+    look,
+    fov: Math.min(76, BASE_FOV + 6 + spread * 5),
+  };
+}
+
+function CameraRig({
+  placed,
+  focusId,
+  focusGroup,
+  introKey,
+}: {
+  placed: Placed[];
+  focusId: string | null;
+  focusGroup: string[];
+  introKey: number;
+}) {
   const introStart = useRef<number | null>(null);
+  const from = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
+  const to = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
+  const cur = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
+  const shotStart = useRef(0);
+  const shotKey = useRef("");
 
   useEffect(() => {
     if (introKey) introStart.current = performance.now();
   }, [introKey]);
 
-  useFrame(({ camera }, dt) => {
-    // walk in from the door to my chair
+  useFrame(({ camera }) => {
+    const now = performance.now();
     const start = introStart.current;
-    const p = start === null ? 0 : Math.min(1, (performance.now() - start) / INTRO_MS);
-    camera.position.lerpVectors(DOOR, MY_SEAT, ease(p));
-    camera.position.y += Math.sin(p * Math.PI * 6) * 0.025 * (1 - p); // footsteps
+    const p = start === null ? 0 : Math.min(1, (now - start) / INTRO_MS);
 
-    // turn my head toward whoever is acting
-    const target = placed.find((x) => x.member.id === focusId);
-    const goal =
-      p < 1 || !target || target.member.presence === "gone"
-        ? TABLE_MIDDLE
-        : new THREE.Vector3(target.pos.x * 0.92, target.member.presence === "away" && !target.member.action ? 0.85 : HEAD_Y, target.pos.z * 0.92);
-    const k = 1 - Math.exp(-dt * 3.2);
-    look.current.lerp(goal, k);
-    camera.lookAt(look.current);
+    if (p < 1) {
+      // walk in from the door to my chair
+      const e = easeInOut(p);
+      cur.current.pos.lerpVectors(DOOR, MY_SEAT, e);
+      cur.current.pos.y += Math.sin(p * Math.PI * 6) * 0.025 * (1 - p);
+      cur.current.look.copy(TABLE_MIDDLE);
+      cur.current.fov = BASE_FOV;
+      shotKey.current = "";
+    } else {
+      const ids = focusGroup.length > 0 ? focusGroup : focusId && focusId !== "me" ? [focusId] : [];
+      const targets = placed.filter((x) => ids.includes(x.member.id) && x.member.presence !== "gone");
+      const key = targets.map((t) => `${t.member.id}:${t.member.presence}`).join("|");
+      if (key !== shotKey.current) {
+        // new shot: tween from wherever the camera is now
+        shotKey.current = key;
+        from.current = { pos: cur.current.pos.clone(), look: cur.current.look.clone(), fov: cur.current.fov };
+        to.current = shotFor(targets);
+        shotStart.current = now;
+      }
+      const e = easeInOut(Math.min(1, (now - shotStart.current) / SHOT_MS));
+      cur.current.pos.lerpVectors(from.current.pos, to.current.pos, e);
+      cur.current.look.lerpVectors(from.current.look, to.current.look, e);
+      cur.current.fov = from.current.fov + (to.current.fov - from.current.fov) * e;
+    }
+
+    camera.position.copy(cur.current.pos);
+    camera.lookAt(cur.current.look);
+    const persp = camera as THREE.PerspectiveCamera;
+    if (Math.abs(persp.fov - cur.current.fov) > 0.01) {
+      persp.fov = cur.current.fov;
+      persp.updateProjectionMatrix();
+    }
   });
 
   return null;

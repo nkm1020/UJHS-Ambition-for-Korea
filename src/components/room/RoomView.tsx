@@ -13,10 +13,11 @@ import { Composer } from "./Composer";
 
 interface RoomViewProps {
   room: Room;
+  voiceId: string | null;
   onBack: () => void;
 }
 
-export function RoomView({ room, onBack }: RoomViewProps) {
+export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
   const { avatar } = useMe();
   const player = usePlayer(room, avatar);
   const { start, stop } = player;
@@ -79,6 +80,7 @@ export function RoomView({ room, onBack }: RoomViewProps) {
           getTalkLevel={player.getTalkLevel}
           onAnchors={setAnchors}
           focusId={player.focusId}
+          focusGroup={player.focusGroup}
           bubbles={othersBubbles}
         />
         {STAGE_MODE === "2d" && stageBox.w > 0 && (
@@ -109,7 +111,7 @@ export function RoomView({ room, onBack }: RoomViewProps) {
         )}
       </div>
 
-      <Composer onSend={player.send} nudge={player.scriptDone && !player.busy} />
+      <Composer onSend={player.send} voiceId={voiceId} nudge={player.scriptDone && !player.busy} />
 
       {!doorOpen && (
         <div className="door" aria-hidden onAnimationEnd={(e) => e.target === e.currentTarget && setDoorOpen(true)}>
