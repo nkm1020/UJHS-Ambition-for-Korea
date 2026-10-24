@@ -5,17 +5,26 @@
 /* ── 아바타 ───────────────────────────────────────────────── */
 
 export type GlassesName = 'none' | 'shutter' | 'round';
+export type HairName = 'none' | 'tuft' | 'buns' | 'bob' | 'spiky' | 'curls';
+export type HatName = 'none' | 'beanie' | 'headphones' | 'crown' | 'halo';
+export type BagName = 'none' | 'fanny' | 'crossbody' | 'backpack';
 
-/** 꾸미기 슬롯. 각 필드가 곧 상점 아이템 단위다. */
+/** 꾸미기 슬롯. 각 필드가 곧 상점 아이템 단위다. 이름·가격표는 src/lib/avatar.ts의 STYLES.
+   2026-10-24 추가: hair·expression·hat. bag은 boolean → BagName (저장된 true는 'fanny'로 읽는다). */
 export interface AvatarConfig {
   body: string;          // 머리+몸통 (하나로 이어진 물방울)
   skin: string;          // 팔
   legs: string;          // 다리
   shoes: string;
   face: string;          // 얼굴판 색
+  hair: HairName;
+  hairColor: string;
+  expression: FaceName;  // 마이룸에서 짓는 표정. 원탁에서는 동작이 표정을 정한다
+  hat: HatName;
+  hatColor: string;      // 왕관·후광은 금색 고정이라 안 쓴다
   glasses: GlassesName;
   glassesColor: string;
-  bag: boolean;          // 패니팩
+  bag: BagName;
   bagColor: string;
 }
 
@@ -200,7 +209,7 @@ export interface AvatarStandProps {
   focus?: boolean;
   /** 방 색과 소품. 없으면 내 방. 친구 방은 친구마다 다르다 */
   look?: HomeLook;
-  /** 표정. 없으면 'happy' */
+  /** 표정. 없으면 avatar.expression */
   face?: FaceName;
 }
 

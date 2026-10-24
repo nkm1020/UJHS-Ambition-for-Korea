@@ -91,9 +91,27 @@ export function AvatarStand(props: AvatarStandProps) {
 1. **보고하기(권장):** 각 캐릭터 머리 위 지점을 화면 좌표로 투영해서 `{ [memberId]: { x, y } }`로 보낸다. 좌표는 스테이지 박스 기준 px이다. 리사이즈나 카메라가 바뀔 때만 보내고, 매 프레임 보내지 않는다.
 2. **보고 안 하기:** `src/components/avatar/seatLayout.ts`의 `SEAT_LAYOUT` 위치에 머리가 오도록 카메라를 고정한다.
 
-## 꾸미기 옵션
+## 꾸미기 옵션과 상점
 
-`src/lib/avatar.ts`의 `AVATAR_OPTIONS`가 마이룸 꾸미기 패널(`src/components/myroom/Customizer.tsx`)을 그린다. 색 목록에 값만 추가하면 UI는 자동으로 따라온다. 키를 추가하려면 `src/lib/types.ts`의 `AvatarConfig`와 `Customizer.tsx`의 `GROUPS`에도 추가한다(공동 파일이니 말하고 바꾸기).
+꾸미기 화면은 `src/components/myroom/Wardrobe.tsx`다. 마이룸 위에 뜨는 유리 패널(화면 아래 40%)에서 카테고리(Body · Hair · Expression · Hats · Glasses · Bags · Pants · Shoes)가 스크롤되고, 위의 칩으로 건너뛴다. 홈 카메라의 편집 구도(`HomeStage3D`의 `EDIT`)는 캐릭터와 모자가 패널 위 공간에 들어오도록 맞춰 두었다.
+
+- **색:** `src/lib/avatar.ts`의 `AVATAR_OPTIONS`. 값만 추가하면 UI가 따라온다. 색은 전부 무료다.
+- **모양(헤어·표정·모자·안경·가방):** 같은 파일의 `STYLES`. 각 목록의 첫 항목이 기본값이고, `price`(USD)가 있으면 유료다.
+- **산 아이템:** `useMe().me.owned`에 `'hat:crown'` 같은 키로 저장된다. 유료 아이템은 눌러서 입어 볼 수 있고, Get이나 Done을 누르면 결제 시트가 뜬다. **데모는 심사위원용이라 결제 없이 바로 unlock된다.** 상점이 생기기 전에 저장된 모습에 들어 있던 유료 아이템은 산 것으로 친다.
+- **`expression`은 마이룸에서 짓는 표정이다.** 원탁의 표정은 지금처럼 `ACTION_POSES`가 정한다(내 캐릭터는 원탁에서 1인칭이라 안 보인다).
+- **`bag`은 boolean에서 `'none' | 'fanny' | 'crossbody' | 'backpack'`으로 바뀌었다.** 예전에 저장된 `true`는 `'fanny'`로 읽는다.
+
+새 모양을 추가하는 순서: `types.ts`의 이름 → `avatar.ts`의 `STYLES`(이름·가격)와 `avatarFaceUrl`(타일 아이콘) → `shape.ts`의 지오메트리 → `Avatar.tsx`의 렌더 → `globals.css`의 2D 대체 모양(`FlatAvatar`). 공동 파일이니 말하고 바꾼다.
+
+**원탁에서 친구에게 입힐 때 주의할 것.**
+
+| 아이템 | 주의 |
+|---|---|
+| 백팩 | `laugh`처럼 뒤로 젖히는 포즈에서 의자 등받이에 닿는다. `sit`·`slump`는 괜찮다 |
+| 왕관·후광 | 앉으면 꼭대기가 y≈1.67이라 말풍선(`Html` y=1.72) 바로 아래에 온다 |
+| 비니 | 쓰면 헤어가 눌린다. 단발은 비니 아래로 보이고, 곱슬은 삐져나온 것만, 나머지는 숨는다 |
+
+모든 조합은 `/preview`의 hair·hat·bag 줄에서 볼 수 있다.
 
 ## 지켜야 할 것 (VC가 혼자 한 번만 써본다)
 

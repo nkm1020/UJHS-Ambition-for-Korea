@@ -221,8 +221,10 @@ button {
   transform-origin: 50% 0;
 }
 
+/* Editing: centred in the space between the edit bar and the wardrobe panel
+   (the panel is 40dvh; the figure is about 270px with a hat on) */
 .home-space .stand2d.is-focus {
-  transform: translateY(-4%) scale(1.5);
+  transform: translateY(calc(8dvh - 115px));
 }
 
 .home-bar:has(.home-id) {
@@ -579,6 +581,8 @@ button {
    first so the camera pulls out over a clean room. */
 
 .wardrobe {
+  /* the camera frames the figure in the space above this */
+  --wardrobe-panel-h: min(40dvh, 380px);
   position: absolute;
   inset: 0;
   z-index: 100;
@@ -616,7 +620,7 @@ button {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom) + 152px);
+  bottom: calc(env(safe-area-inset-bottom) + 22px + var(--wardrobe-panel-h));
   text-align: center;
   font-size: 13px;
   font-weight: 500;
@@ -630,7 +634,11 @@ button {
   left: 12px;
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom) + 12px);
-  padding: 14px 18px 20px;
+  height: var(--wardrobe-panel-h);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: 12px;
   border-radius: 30px;
   background: rgba(250, 248, 244, 0.86);
   -webkit-backdrop-filter: blur(30px) saturate(1.8);
@@ -676,13 +684,6 @@ button {
   color: var(--tint);
 }
 
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
 .panel-label {
   font-size: 13px;
   font-weight: 600;
@@ -724,6 +725,358 @@ button {
   font-size: 15px;
   font-weight: 600;
   color: var(--tint);
+}
+
+/* Categories: chips on top, the list scrolls under them. Paid tiles carry a
+   price tag; trying one on brings up the unlock bar at the panel's foot. */
+
+.wardrobe-top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 16px;
+}
+
+.wardrobe-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 14px 10px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.wardrobe-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.wardrobe-tabs button {
+  flex: none;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: var(--fill);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s, transform 0.15s var(--ease-out);
+}
+
+.wardrobe-tabs button:active {
+  transform: scale(0.96);
+}
+
+.wardrobe-tabs button.is-on {
+  background: var(--label);
+  color: #fff;
+}
+
+.wardrobe-top .shuffle {
+  flex: none;
+  margin-bottom: 10px;
+}
+
+.wardrobe-scroll {
+  position: relative; /* sections measure offsetTop from here */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 18px 18px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.wardrobe-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0 6px;
+}
+
+.wardrobe-section + .wardrobe-section {
+  border-top: 0.5px solid var(--separator);
+}
+
+.sub-label {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--label-2);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 4px 9px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(40, 28, 16, 0.08), 0 2px 6px -3px rgba(40, 28, 16, 0.18);
+  transition: transform 0.15s var(--ease-out), box-shadow 0.15s;
+}
+
+.tile:active {
+  transform: scale(0.95);
+}
+
+.tile.is-on {
+  box-shadow: 0 0 0 2px var(--label);
+}
+
+.tile-img {
+  width: 46px;
+  height: 46px;
+  background: center / contain no-repeat;
+}
+
+.tile-none {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  margin: 7px;
+  border-radius: 50%;
+  border: 2px solid var(--label-3);
+}
+
+.tile-none::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--label-3);
+  transform: rotate(45deg);
+}
+
+.tile-name {
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.tile-price {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: var(--tint);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.unlock-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 8px 8px;
+  padding: 9px 9px 9px 16px;
+  border-radius: 22px;
+  background: rgba(28, 28, 30, 0.92);
+  color: #fff;
+  animation: rise 0.35s var(--ease-out) both;
+}
+
+.unlock-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.unlock-text strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.unlock-text span {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.unlock-text s,
+.checkout-price s,
+.checkout-total s {
+  margin-right: 4px;
+  opacity: 0.7;
+}
+
+.unlock-btn {
+  flex: none;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 19px;
+  background: var(--tint);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  transition: transform 0.15s var(--ease-out);
+}
+
+.unlock-btn:active {
+  transform: scale(0.95);
+}
+
+.wardrobe-toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 24px + var(--wardrobe-panel-h));
+  z-index: 2;
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: rgba(28, 28, 30, 0.92);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: dim-in 0.25s var(--ease-out) both;
+}
+
+/* Checkout. The demo is for judges: the sheet shows the price and takes nothing. */
+
+.checkout {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.checkout-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  animation: dim-in 0.25s both;
+}
+
+.checkout-sheet {
+  position: relative;
+  max-height: 86%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 20px calc(14px + env(safe-area-inset-bottom));
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: var(--surface);
+  animation: sheet-up 0.38s var(--ease-out) both;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.checkout-grabber {
+  align-self: center;
+  width: 36px;
+  height: 5px;
+  margin-bottom: 6px;
+  border-radius: 3px;
+  background: var(--fill-2);
+}
+
+.checkout-sheet h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.checkout-sub {
+  margin-top: -6px;
+  font-size: 14px;
+  color: var(--label-2);
+  text-align: center;
+}
+
+.checkout-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.checkout-thumb {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #f2f2f7 center / 32px no-repeat;
+}
+
+.checkout-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.checkout-name small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--label-2);
+}
+
+.checkout-price {
+  font-size: 14px;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.checkout-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.checkout-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--label-2);
+  text-align: center;
+}
+
+.checkout-sheet .text-btn.quiet {
+  align-self: center;
 }
 
 /* ---------- room ----------
@@ -2120,6 +2473,269 @@ button {
   height: 1.2em;
   border-radius: 0.3em;
   background: var(--glasses);
+}
+
+/* 2D hair and hats sit on the head box (7.8em square) */
+.fa-hair,
+.fa-hat {
+  position: absolute;
+  pointer-events: none;
+}
+
+.h-bob {
+  left: 0.3em;
+  right: 0.3em;
+  top: -0.2em;
+  height: 2.6em;
+  border-radius: 3.6em 3.6em 1em 1em / 2.6em 2.6em 0.6em 0.6em;
+  background: var(--hair);
+}
+
+.h-bob::before,
+.h-bob::after {
+  content: "";
+  position: absolute;
+  top: 1.5em;
+  width: 1.6em;
+  height: 4em;
+  border-radius: 1em;
+  background: var(--hair);
+}
+
+.h-bob::before {
+  left: -0.55em;
+}
+
+.h-bob::after {
+  right: -0.55em;
+}
+
+.h-tuft {
+  left: 46%;
+  top: -1em;
+  width: 1.3em;
+  height: 1.6em;
+  border-left: 0.42em solid var(--hair);
+  border-top: 0.42em solid var(--hair);
+  border-radius: 1.2em 1.2em 0 0 / 1.4em 1.4em 0 0;
+  transform: rotate(18deg);
+}
+
+.h-buns {
+  inset: 0;
+}
+
+.h-buns::before,
+.h-buns::after {
+  content: "";
+  position: absolute;
+  top: -0.5em;
+  width: 2.3em;
+  height: 2.3em;
+  border-radius: 50%;
+  background: var(--hair);
+}
+
+.h-buns::before {
+  left: 0.2em;
+}
+
+.h-buns::after {
+  right: 0.2em;
+}
+
+.h-spiky {
+  left: 0.5em;
+  right: 0.5em;
+  top: -0.9em;
+  height: 2.5em;
+  background: var(--hair);
+  clip-path: polygon(0 100%, 4% 45%, 14% 62%, 24% 18%, 37% 50%, 50% 0, 63% 50%, 76% 18%, 86% 62%, 96% 45%, 100% 100%);
+}
+
+.h-curls {
+  left: 50%;
+  top: -0.3em;
+  width: 2em;
+  height: 2em;
+  margin-left: -1em;
+  border-radius: 50%;
+  background: var(--hair);
+  box-shadow:
+    -0.9em -0.1em 0 0 var(--hair),
+    0.9em -0.1em 0 0 var(--hair),
+    -1.8em 0.6em 0 0 var(--hair),
+    1.8em 0.6em 0 0 var(--hair),
+    -2.9em 1.6em 0 -0.15em var(--hair),
+    2.9em 1.6em 0 -0.15em var(--hair);
+}
+
+.t-beanie {
+  left: 0.2em;
+  right: 0.2em;
+  top: -0.55em;
+  height: 2.9em;
+  border-radius: 3.7em 3.7em 0.6em 0.6em / 2.9em 2.9em 0.6em 0.6em;
+  background: var(--hat);
+  box-shadow: inset 0 -0.9em 0 rgba(0, 0, 0, 0.12);
+}
+
+.t-beanie::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -0.75em;
+  width: 1.3em;
+  height: 1.3em;
+  margin-left: -0.65em;
+  border-radius: 50%;
+  background: var(--hat);
+}
+
+.t-headphones {
+  left: -0.45em;
+  right: -0.45em;
+  top: -0.35em;
+  height: 4.4em;
+  border: 0.45em solid var(--hat);
+  border-bottom: 0;
+  border-radius: 4.3em 4.3em 0 0;
+}
+
+.t-headphones::before,
+.t-headphones::after {
+  content: "";
+  position: absolute;
+  bottom: -1.3em;
+  width: 1.4em;
+  height: 2.5em;
+  border-radius: 0.7em;
+  background: var(--hat);
+}
+
+.t-headphones::before {
+  left: -0.9em;
+}
+
+.t-headphones::after {
+  right: -0.9em;
+}
+
+.t-crown {
+  left: 50%;
+  top: -1.25em;
+  width: 3em;
+  height: 1.7em;
+  margin-left: -1.5em;
+  background: #f2c14e;
+  clip-path: polygon(0 100%, 0 20%, 25% 55%, 50% 0, 75% 55%, 100% 20%, 100% 100%);
+}
+
+.t-halo {
+  left: 50%;
+  top: -1.7em;
+  width: 4.2em;
+  height: 1.1em;
+  margin-left: -2.1em;
+  border: 0.35em solid #f2c14e;
+  border-radius: 50%;
+}
+
+.fa-bag.b-crossbody {
+  left: 2.5em;
+  top: 10.4em;
+  width: 5.4em;
+  height: 0.4em;
+  border-radius: 0.2em;
+  box-shadow: none;
+  transform: rotate(40deg);
+}
+
+.fa-bag.b-crossbody::after {
+  content: "";
+  position: absolute;
+  right: -0.7em;
+  top: -0.6em;
+  width: 1.9em;
+  height: 1.6em;
+  border-radius: 0.5em;
+  background: var(--bag);
+  box-shadow: inset 0 -0.22em 0 rgba(0, 0, 0, 0.12);
+  transform: rotate(-40deg);
+}
+
+.fa-bag.b-backpack {
+  left: 3.1em;
+  top: 8.5em;
+  width: 3.8em;
+  height: 3.4em;
+  background: none;
+  box-shadow: none;
+}
+
+.fa-bag.b-backpack::before,
+.fa-bag.b-backpack::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 0.5em;
+  height: 100%;
+  border-radius: 0.25em;
+  background: var(--bag);
+}
+
+.fa-bag.b-backpack::before {
+  left: 0;
+}
+
+.fa-bag.b-backpack::after {
+  right: 0;
+}
+
+/* expressions, standing figure only (the table's faces come from the actions) */
+.ex-happy .fa-eyes i {
+  height: 0.55em;
+  margin-top: 0.2em;
+  border: 0.24em solid #2a2230;
+  border-bottom: 0;
+  border-radius: 0.8em 0.8em 0 0;
+  background: none;
+}
+
+.ex-happy .fa-mouth {
+  transform: scaleY(0.75);
+}
+
+.ex-smirk .fa-eyes i:last-of-type,
+.ex-blank .fa-eyes i {
+  height: 0.22em;
+  margin-top: 0.5em;
+  border-radius: 0.2em;
+}
+
+.ex-smirk .fa-mouth {
+  transform: translateX(0.25em) rotate(-14deg) scaleY(0.3);
+}
+
+.ex-blank .fa-mouth {
+  transform: scaleY(0.14);
+}
+
+.ex-shock .fa-eyes i {
+  width: 1em;
+  height: 1.35em;
+}
+
+.ex-shock .fa-mouth {
+  width: 0.9em;
+  margin-left: -0.45em;
+  border-radius: 50%;
+  transform: none;
+}
+
+.ex-sad .fa-mouth {
+  border-radius: 1em 1em 0.2em 0.2em;
+  transform: scaleY(0.35);
 }
 
 .eyes-closed .fa-eyes i {

@@ -7,7 +7,7 @@ export const AGENT_GREETING = "oh hey 👋 I'm Ari, the AI at this table. say an
 const av = (o: Partial<AvatarConfig>): AvatarConfig => ({ ...DEFAULT_AVATAR, ...o });
 
 const MAYA = av({ body: '#C9B6E8', skin: '#C98A5C', legs: '#5FB4E8', shoes: '#F2669E', face: '#F2D98A', glasses: 'round', glassesColor: '#3D4466' });
-const LEO  = av({ body: '#A8D8C4', skin: '#9B6440', legs: '#E8C45F', shoes: '#5FB4E8', face: '#F0C49C', bag: true, bagColor: '#F2669E' });
+const LEO  = av({ body: '#A8D8C4', skin: '#9B6440', legs: '#E8C45F', shoes: '#5FB4E8', face: '#F0C49C', bag: 'fanny', bagColor: '#F2669E' });
 const ARI  = av({ body: '#F0F0F0', skin: '#E0A878', legs: '#B47DE8', shoes: '#7DC98A', face: '#7CC5E8', glasses: 'shutter', glassesColor: '#B47DE8' });
 
 /* 데모의 기본 방은 두 개다.
