@@ -111,3 +111,31 @@ npm run dev
 ```
 
 `http://localhost:3000` → 마이룸에서 꾸미기 → 바텀시트에서 "Friday plans" → 원탁. 첫 방 대본은 `src/data/rooms.ts`에 있다.
+
+## 진짜 아바타로 바꿔 끼우기 (`StickFigure` → `Avatar`)
+
+`RoomStage3D`·`HomeStage3D`의 `<StickFigure>` 자리에 `<Avatar>`(`src/components/avatar/Avatar.tsx`)를 넣는다. 입력은 같다.
+
+```tsx
+<Avatar
+  config={member.avatar}       // color 대신 꾸미기 값 전체
+  pose={pose}
+  face={face}                  // ACTION_POSES 단계의 face. 없으면 away는 "blank", 나머지 "neutral"
+  seed={member.seat + 1}
+  talkLevel={talkLevel}        // 0..1, 매 프레임 읽는다
+  lookYaw={lookYaw}            // headYaw와 같은 규칙(+ = 캐릭터의 왼쪽). 머리와 몸통이 한 덩어리라 상체째 돈다
+/>
+// 마이룸: <Avatar config={avatar} pose="idle" face="happy" seed={7} />
+```
+
+- **관절 각도는 motion engine이 아니라 `Avatar` 안의 포즈표를 쓴다.** 엔진 각도는 막대 인형 기준이라 콩 모양 몸에 넣으면 팔이 몸을 뚫는다. 포즈 이름(`PoseName`)만 넘기면 된다.
+- **크기가 막대 인형과 다르다.** 원탁 숫자를 이렇게 맞추면 앉은 포즈의 팔이 테이블 위에 정확히 눕는다(이 값으로 RoomStage3D에서 확인함).
+
+| | StickFigure 기준 | Avatar 기준 |
+|---|---|---|
+| 테이블 윗면 | 0.63 (`TABLE_Y` 0.6) | **0.62** = `TABLE_TOP_Y` (`TABLE_Y` 0.59) |
+| 의자 윗면 | 0.43 | **0.34** (엉덩이 0.40) |
+| 테이블 가장자리 ↔ 아바타 중심 | 0.77 (`SEAT_R` 1.72) | **약 0.25** (`SEAT_R` ≈ 1.2) |
+| 앉은 머리 꼭대기 | — | 1.46 (말풍선 `Html` y=1.72는 그대로 OK) |
+
+- 모든 포즈·표정은 `/preview`에서 확인할 수 있다.
