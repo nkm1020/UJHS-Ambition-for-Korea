@@ -2,19 +2,22 @@
 
 > 스펙: [`docs/WORK-SPLIT.md`](../WORK-SPLIT.md) "B 상세". 위에서부터 순서대로. 막히면 바로 A에게 말하기.
 
-## 12:15–12:30 계약 + 배포 (A가 기다리는 것부터)
-- [ ] `src/lib/types.ts` — WORK-SPLIT의 계약 그대로 → push
-- [ ] 아바타 라이브러리 결정(예: DiceBear SVG 스타일 하나) + **라이선스 확인**
-- [ ] `src/lib/avatar.ts`: `AVATAR_OPTIONS`, `randomAvatar()`, `avatarFaceUrl(cfg)` → push
-- [ ] `src/data/rooms.ts`: 첫 방 "Friday plans 🍕" 대본(텍스트만, 오디오 경로는 미리 적어두기) → push
+## 12:15–12:45 계약 + 배포 (A가 기다리는 것부터)
+- [x] Next.js 스캐폴드 + `three`/`@react-three/fiber`/`@react-three/drei` → push (`1ca0a14`)
+- [x] `src/lib/types.ts` — `AvatarConfig`/`PoseName`은 3D용으로 교체, `ActionName`/`Member`/`Beat`/`Room`은 그대로
+- [x] ~~아바타 라이브러리 + 라이선스 확인~~ — **불필요**. 프리미티브로 직접 만들어서 외부 에셋이 없다
+- [x] `src/components/avatar/Avatar.tsx`, `AvatarStage.tsx` (공동 소유)
+- [x] `src/lib/avatar.ts`: `AVATAR_OPTIONS`, `DEFAULT_AVATAR`, `randomAvatar()`, `avatarFaceUrl(cfg)`
+- [ ] **A에게 "스캐폴드 만들지 말고 pull해라" 라고 말하기** (중복 스캐폴드 = 충돌)
+- [ ] `src/data/rooms.ts`: 첫 방 "Friday plans 🍕" 대본(텍스트만, 오디오 경로는 미리 적어두기) → push ← **지금 여기**
 - [ ] A의 스캐폴드 pull 후 Vercel 프로젝트 연결, 첫 배포 URL 확인 → A에게 공유
 
 ## 12:30–13:30 마이룸 + 바텀시트
 - [ ] `src/lib/me.tsx`: `MeProvider`, `useMe()`, localStorage 저장, 첫 방문은 `randomAvatar()`
-- [ ] `MyRoom`: 방 배경 + 서 있는 내 캐릭터(숨쉬기)
-- [ ] `Customizer`: 피부색, 머리 모양, 머리 색, 눈, 옷 색 → 즉시 반영
+- [ ] `MyRoom`: 방 배경 + `<AvatarStage spin><Avatar pose="idle" /></AvatarStage>` (숨쉬기·눈깜빡임은 이미 들어 있음)
+- [ ] `Customizer`: `AVATAR_OPTIONS` 슬롯 6개(몸통·피부·다리·신발·얼굴·안경) + 가방 토글 + 🎲 → 즉시 반영. **`src/app/page.tsx`의 임시 화면에 이미 다 있으니 그걸 옮겨 다듬으면 된다**
 - [ ] `BottomSheet`: 접힘 → 반 → 전체 (snap points, 예: `vaul`)
-- [ ] `RoomCard`: 이모지 + 이름, 미니 원탁(앉음/엎드림), 미리보기, 안 읽은 수
+- [ ] `RoomCard`: 이모지 + 이름, 미니 원탁(`avatarFaceUrl()`의 작은 얼굴 — 카드마다 Canvas를 띄우지 말 것), 미리보기, 안 읽은 수
 - [ ] 첫 방에만 "Open a chat 👆" 힌트, 카드 탭 → `onOpen(room.id)`
 
 ## 13:00–13:30 녹음 (A도 10분 참여)

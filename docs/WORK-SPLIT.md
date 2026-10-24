@@ -30,7 +30,8 @@
 | `src/lib/player/*` (비트 재생기, 오디오, 입 움직임) | A |
 | `src/lib/recorder.ts` (MediaRecorder) | A |
 | `src/lib/types.ts` | **공동** — 바꾸기 전에 반드시 말로 알린다 |
-| `src/lib/avatar.ts` (옵션 목록, `randomAvatar`, `avatarFaceUrl`) | B — **12:30까지 push** |
+| `src/lib/avatar.ts` (옵션 목록, `randomAvatar`, `avatarFaceUrl`) | B — ✅ push 완료 |
+| `src/components/avatar/*` (`Avatar`, `AvatarStage`) | **공동** — B가 만들었고 A도 쓴다. 바꾸기 전에 말한다 |
 | `src/lib/me.tsx` (MeProvider: 내 아바타, localStorage 저장) | B |
 | `src/lib/stt.ts` (`startSTT`) | B — 13:30–14:00 |
 | `src/components/myroom/*` (MyRoom, StandingCharacter, Customizer) | B |
@@ -43,16 +44,29 @@
 
 ## 계약: `src/lib/types.ts`
 
-B가 12:30까지 이 내용 그대로 push한다. 이후 변경은 합의해서만.
+B가 `1ca0a14`로 push 완료. 이후 변경은 합의해서만.
 
 ```ts
+export type GlassesName = 'none' | 'shutter' | 'round';
+
 export interface AvatarConfig {
-  skin: string;       // 옵션 값은 avatar.ts의 AVATAR_OPTIONS에서
-  hair: string;
-  hairColor: string;
-  eyes: string;
-  outfit: string;     // 몸통 색 (CSS color)
+  body: string;        // 머리+몸통 (하나로 이어진 물방울)
+  skin: string;        // 팔
+  legs: string;
+  shoes: string;
+  face: string;        // 얼굴판 색
+  glasses: GlassesName;
+  glassesColor: string;
+  bag: boolean;        // 패니팩
+  bagColor: string;
 }
+
+// 표정은 몸짓과 독립된 레이어다. 조합이 공짜로 늘어난다.
+export type FaceName = 'neutral' | 'happy' | 'shock' | 'blank' | 'sad' | 'smirk';
+
+export type PoseName =
+  | 'idle' | 'walk' | 'sit' | 'sitTalk' | 'slump'
+  | 'stare' | 'startle' | 'coverMouth' | 'heart' | 'laugh';
 
 export type ActionName =
   | 'walk_in'      // 내 입장: 걸어 들어와 빈자리에 앉음. 보고 있던 사람은 고개 돌림
@@ -104,9 +118,14 @@ export interface Room {
 
 ```ts
 // src/lib/avatar.ts
-export const AVATAR_OPTIONS: { skin: string[]; hair: string[]; hairColor: string[]; eyes: string[]; outfit: string[] };
+export const AVATAR_OPTIONS: { body: string[]; skin: string[]; legs: string[]; shoes: string[]; face: string[]; glasses: GlassesName[] };
+export const DEFAULT_AVATAR: AvatarConfig;
 export function randomAvatar(): AvatarConfig;
-export function avatarFaceUrl(cfg: AvatarConfig): string; // 얼굴 SVG data URI. 몸통은 각자 CSS로
+export function avatarFaceUrl(cfg: AvatarConfig): string; // 작은 아이콘용 얼굴 SVG. 무대 위 캐릭터는 <Avatar>
+
+// src/components/avatar/  — 공동으로 쓴다. 바꾸기 전에 말한다.
+// <Avatar config pose face seed talking />
+// <AvatarStage spin camera fov>{children}</AvatarStage>
 
 // src/lib/me.tsx
 export function MeProvider(props: { children: React.ReactNode }): JSX.Element;
@@ -139,14 +158,28 @@ const room = ROOMS.find((r) => r.id === openRoomId);
 
 ## A 상세: 방(원탁)
 
-**레이아웃:** 상단에 ← 뒤로 + 방 이름 + "2 watching". 가운데에 타원형 원탁을 약간 위에서 내려다본다. **모든 자리는 테이블 먼 쪽 호에 카메라를 향해 앉는다**(그래야 모든 얼굴이 보인다). 내 자리는 민트색 테두리. 테이블 위로는 상반신만 보인다. 하단에는 자막, 🎤 버튼, 텍스트 입력.
+**레이아웃:** 상단에 ← 뒤로 + 방 이름 + "2 watching". 가운데에 원탁을 약간 위에서 내려다본다. 하단에는 자막, 🎤 버튼, 텍스트 입력.
+
+**원탁은 3D다.** `<AvatarStage camera={[0, 2.2, 3.4]} fov={34}>` 안에 원탁 메시 하나와 `<Avatar>` 5개를 둔다. **모든 자리는 테이블 먼 쪽 호에 카메라를 향해 앉힌다**(그래야 모든 얼굴이 보인다). 자리 좌표는 호를 따라 각도로 계산한다:
+
+```tsx
+// seat 0~4 → 테이블 먼 쪽 호. 가운데가 정면, 양끝이 살짝 안쪽을 본다.
+const a = Math.PI * (0.62 + seat * 0.19);   // 0.62π ~ 1.38π
+const pos: [number, number, number] = [Math.cos(a) * 1.15, 0, Math.sin(a) * 0.78];
+const rotY = -a - Math.PI / 2;              // 카메라 쪽을 보게
+<group position={pos} rotation={[0, rotY, 0]}>
+  <Avatar config={m.avatar} pose={pose} face={face} seed={m.seat} talking={isTalking} />
+</group>
+```
+
+내 자리는 발밑에 민트색 링 메시를 깐다. 테이블 메시는 `<cylinderGeometry args={[1.0, 1.0, 0.08, 32]} />` 하나면 충분하고, 캐릭터는 앉으면 상반신만 테이블 위로 올라온다.
 
 **자세:**
 - `watching`: 앉아서 정면, 선명
 - `away`: 팔 위에 얼굴을 묻고 엎드림, 흐리게, 가끔 💤
 - `gone`: 빈 의자만
 
-**몸짓** (CSS keyframes면 충분하다. 과장할수록 웃기다):
+**몸짓:** `types.ts`의 `ACTION_POSES[action]`이 각 액션을 `{pose, face, ms, emoji}` 단계로 풀어 준다. 재생기는 단계를 순서대로 `<Avatar pose face>`에 넘기기만 하면 되고, 포즈 사이 보간은 `Avatar`가 알아서 한다. 이모지(👀 💦 ✋)는 drei `<Html>` 또는 빌보드 스프라이트로 머리 위에 띄운다. 아래 표는 그 결과가 어떻게 보여야 하는지다:
 
 | action | 연출 | 길이 |
 |---|---|---|
@@ -180,9 +213,14 @@ const room = ROOMS.find((r) => r.id === openRoomId);
 
 ## B 상세: 마이룸·바텀시트·대본
 
-**아바타 (`avatar.ts`, 12:30까지):** 오픈소스 2D 아바타 라이브러리(예: DiceBear의 SVG 스타일 하나)를 쓰거나 직접 SVG 레이어를 만든다. **스타일 라이선스를 먼저 확인**한다. 얼굴만 SVG data URI로 만들고 몸통은 CSS. 이미지 생성 API는 쓰지 않는다.
+**아바타 (완료, `1ca0a14`):** react-three-fiber 프리미티브(구·캡슐·원뿔대)로 직접 조립했다. 모델링 파일도, 외부 아바타 라이브러리도, 이미지 생성 API도 쓰지 않으므로 **라이선스 확인이 필요 없다**.
 
-**마이룸:** 방 배경 안에 내 캐릭터가 서 있다(숨쉬기). 꾸미기 패널(피부색, 머리 모양, 머리 색, 눈, 옷 색)을 바꾸면 즉시 반영하고 localStorage에 저장한다. 첫 방문은 `randomAvatar()`로 시작해서 처음부터 귀엽게 보이게 한다.
+- `<Avatar config pose face seed talking />` — 캐릭터 본체. 뼈대가 없고 group 회전만 쓴다. 포즈 사이는 `damp`로 보간돼서 끊기지 않는다. `seed`를 자리 번호로 주면 숨쉬기·눈 깜빡임이 캐릭터마다 어긋나 무대가 살아난다.
+- `<AvatarStage spin camera fov>` — 조명·그림자 프리셋. 마이룸과 원탁이 같은 룩을 쓰도록 한 곳에만 둔다.
+- `avatarFaceUrl(cfg)` — 얼굴 SVG data URI. **바텀시트 미니 원탁처럼 Canvas를 띄우기 아까운 곳에만** 쓴다. 무대 위 캐릭터는 반드시 `<Avatar>`.
+- 꾸미기 슬롯은 `AVATAR_OPTIONS`에 값만 추가하면 늘어난다 = 상점 아이템 단위.
+
+**마이룸:** 방 배경 안에 내 캐릭터가 서 있다(숨쉬기). 꾸미기 패널(`AVATAR_OPTIONS`의 몸통·피부·다리·신발·얼굴 색 + 안경·가방)을 바꾸면 즉시 반영하고 localStorage에 저장한다. 첫 방문은 `randomAvatar()`로 시작해서 처음부터 귀엽게 보이게 한다.
 
 **바텀시트:** snap point가 있는 React 바텀시트(예: `vaul`) 또는 직접 구현. 접힘(손잡이 + 첫 카드 일부) → 반 → 전체. 방 카드에는 이모지 + 이름, **미니 원탁**(앉은 사람·엎드린 사람 작은 점이나 얼굴), 미리보기, 안 읽은 수 배지. 첫 방에만 "Open a chat 👆" 힌트.
 
