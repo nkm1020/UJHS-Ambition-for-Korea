@@ -4,77 +4,87 @@
 
 ## 한 줄 요약
 
-홈에는 내 아바타가 서 있고, 민트색 바텀시트에 채팅방 목록이 있다. 방에 들어가면 친구들이 원탁에 둘러앉아 있고, **지금 방에 들어와 있는 사람만 고개를 들고** 대화한다. 읽씹·늦은 답장·나가기는 자세와 몸짓으로 보인다. VC가 링크를 **혼자** 열어서 써보고 통과를 누른다. 제출은 **한 번**뿐이다.
+처음 들어오면 **마이룸**에서 내 캐릭터를 꾸민다. 애플 지도처럼 끌어올리는 **바텀시트**에 채팅방 현황이 있다. 방을 고르면 내 캐릭터가 걸어 들어가 **원탁**에 앉는다. 보고 있는 사람은 앉아 있고, 안 보는 사람은 엎드려 있다. 대화는 TTS가 아니라 **실제 목소리**다. VC가 링크를 **혼자** 열어서 써보고 통과를 누른다. 제출은 **한 번**뿐이다.
+
+- 데모 속 친구들 = 팀원이 녹음한 대본
+- VC의 목소리 = 진짜(기기 안에서만 재생)
+- 실시간 멀티유저 = 14:00에 앞서 있을 때만, 별도 경로
 
 ## 역할
 
-| | A — 방(원탁) 담당 | B — 홈·페르소나·대본 담당 |
+| | A — 방(원탁) 담당 | B — 마이룸·바텀시트·대본 담당 |
 |---|---|---|
-| 만드는 것 | 원탁 화면, 캐릭터(`Avatar`), 자세·몸짓 애니메이션, 대사 재생(TTS·자막), 입력창과 반응 재생, 홈↔방 전환 | 홈(서 있는 내 아바타 + 민트 바텀시트 + 방 목록), 방 대본 데이터, 셀카 → 페르소나 API, Cast yourself, 배포, PDF |
-| 입력 | `Room` 데이터 + 내 페르소나 | 셀카, 팀 실제 대화 |
-| 출력 | 방 화면 | `Room[]` 데이터, 내 페르소나 URL |
+| 만드는 것 | 원탁, 앉은 캐릭터, 자세·몸짓 애니메이션, 오디오 재생과 입 움직임, 말풍선·자막, 🎤 녹음과 텍스트 입력, 내 메시지 반응 | 마이룸 + 꾸미기, 바텀시트 + 방 카드(미니 원탁), 아바타 시스템, 방 대본 + 녹음 파일, STT 도우미, 배포, PDF, (14:00 이후) 실시간 |
+| 입력 | `Room` 데이터, 내 `AvatarConfig` | 팀 실제 대화, 팀원 목소리 |
+| 출력 | 방 화면 | `Room[]`, `AvatarConfig`, `avatarFaceUrl()`, `startSTT()` |
 | 이름 | (A 이름) | (B 이름) |
 
-두 사람은 **`src/lib/types.ts`의 `Room` 하나로만** 연결된다. A는 B의 홈이 없어도 첫 방 데이터로 원탁을 끝까지 만들 수 있고, B는 A의 원탁이 없어도 데이터와 홈을 만들 수 있다.
+두 사람은 **`src/lib/types.ts`**와 B의 함수 두 개(`avatarFaceUrl`, `startSTT`)로만 연결된다. A는 첫 방 데이터만 있으면 원탁을 끝까지 만들 수 있다.
 
 ## 파일 소유권
 
 | 경로 | 소유 |
 |---|---|
-| `src/app/page.tsx` (홈 ↔ 방 전환) | A (B는 `<Home />`만 끼운다) |
-| `src/components/room/*` (RoomView, Table, Seat, Captions, ChatInput) | A |
-| `src/components/Avatar.tsx` (홈·방 공용 캐릭터) | A — **12:40까지 v0 push** (원형 얼굴 + 둥근 몸통이면 충분) |
-| `src/lib/player/*` (비트 재생기, speechSynthesis) | A |
+| `src/app/page.tsx` (마이룸 ↔ 방 전환) | A (B는 `<MyRoom />`만 끼운다) |
+| `src/components/room/*` (RoomView, Table, Seat, Bubble, Captions, MicButton, TextInput) | A |
+| `src/lib/player/*` (비트 재생기, 오디오, 입 움직임) | A |
+| `src/lib/recorder.ts` (MediaRecorder) | A |
 | `src/lib/types.ts` | **공동** — 바꾸기 전에 반드시 말로 알린다 |
-| `src/data/rooms.ts` (방 대본) | B |
-| `src/components/home/*` (Home, BottomSheet, RoomList) | B |
-| `src/components/CastYourself.tsx` | B |
-| `src/lib/me.tsx` (MeProvider: 내 페르소나·이름) | B |
-| `src/app/api/persona/route.ts` | B |
-| `public/personas/*` (캐스트 + 프리셋 6개, 512px WebP) | B |
+| `src/lib/avatar.ts` (옵션 목록, `randomAvatar`, `avatarFaceUrl`) | B — **12:30까지 push** |
+| `src/lib/me.tsx` (MeProvider: 내 아바타, localStorage 저장) | B |
+| `src/lib/stt.ts` (`startSTT`) | B — 13:30–14:00 |
+| `src/components/myroom/*` (MyRoom, StandingCharacter, Customizer) | B |
+| `src/components/sheet/*` (BottomSheet, RoomCard, MiniTable) | B |
+| `src/data/rooms.ts` | B |
+| `public/audio/*` | B (녹음은 둘 다 참여) |
+| `src/app/live/[code]/*` (실시간, 14:00 체크포인트 통과 시) | B |
 | `docs/*` (PDF 포함) | B |
 | `package.json` | A가 생성. 이후 의존성 추가는 말로 알리기 |
 
 ## 계약: `src/lib/types.ts`
 
-B가 12:20까지 이 내용 그대로 push한다. 이후 변경은 합의해서만.
+B가 12:30까지 이 내용 그대로 push한다. 이후 변경은 합의해서만.
 
 ```ts
+export interface AvatarConfig {
+  skin: string;       // 옵션 값은 avatar.ts의 AVATAR_OPTIONS에서
+  hair: string;
+  hairColor: string;
+  eyes: string;
+  outfit: string;     // 몸통 색 (CSS color)
+}
+
 export type ActionName =
-  | 'look_up'      // 고개 듦 (방에 들어옴)
-  | 'look_down'    // 고개 숙임 (방을 안 봄)
-  | 'talk'         // 말하기: 몸 통통 + 말풍선 + TTS
-  | 'read_ignore'  // 읽씹: 고개 들어 👀 말한 사람 쳐다봄 → 다시 숙임 (퇴장 안 함)
-  | 'startle_up'   // 늦은 답장: 화들짝 고개 듦 + 💦
-  | 'stand_leave'  // 방 나가기: 일어나 의자 밀고 퇴장, 자리 빔 (재등장 없음)
+  | 'walk_in'      // 내 입장: 걸어 들어와 빈자리에 앉음. 보고 있던 사람은 고개 돌림
+  | 'sit_up'       // 엎드림 → 앉음 (보기 시작)
+  | 'slump'        // 앉음 → 엎드림 (안 보게 됨)
+  | 'talk'         // 목소리 재생 + 입 움직임 + 말풍선
+  | 'read_ignore'  // 읽씹: sit_up → 👀 말한 사람 쳐다봄 → slump
+  | 'startle_up'   // 늦은 답장: 💦 화들짝 일어나 앉음
+  | 'stand_leave'  // 방 나가기: 일어나 의자 밀고 퇴장, 빈자리 (재등장 없음)
   | 'cover_mouth'  // 메시지 취소: 말하다 ✋ 로 입 막음
-  | 'typing_stop'  // 입력하다 멈춤: 고개 들고 입 열었다(…) 닫고 다시 숙임
-  | 'heart'        // 리액션 🫶
-  | 'laugh'        // 리액션 😂
+  | 'typing_stop'  // 입력하다 멈춤: sit_up → 말풍선 "…" → 사라짐 → slump
+  | 'heart'        // 🫶
+  | 'laugh'        // 😂
   | 'freeze';      // 주변 반응: 얼어붙음
 
-export type Presence = 'present' | 'away' | 'gone'; // 고개 듦 / 고개 숙임 / 나감(빈자리)
-
-export interface Voice {
-  pitch: number;   // 0.5 ~ 2
-  rate: number;    // 0.7 ~ 1.4
-}                  // lang은 'en-US' 고정
+export type Presence = 'watching' | 'away' | 'gone'; // 앉음 / 엎드림 / 빈자리
 
 export interface Member {
   id: string;            // 'leo', 내 자리는 항상 'me'
   name: string;          // 'Leo', 내 자리는 'You'
-  personaUrl: string;    // '/personas/leo.webp'. 'me'는 MeProvider 값으로 덮어씀
-  voice: Voice;
-  seat: 0 | 1 | 2 | 3 | 4; // 테이블 먼 쪽 호, 왼쪽부터. 'me'는 가운데(2)
-  startsAs: Presence;
+  avatar: AvatarConfig;  // 'me'는 MeProvider 값으로 덮어씀
+  seat: 0 | 1 | 2 | 3 | 4; // 테이블 먼 쪽 호, 왼쪽부터
+  startsAs: Presence;    // 'me'는 입장 전이라 무시 (walk_in으로 등장)
 }
 
 export interface Beat {
   actorId: string;       // Member.id ('me' 포함)
   action: ActionName;
-  line?: string;         // TTS로 읽을 대사
-  caption?: string;      // 자막. 없으면 line. 예: 'Read 9:41 PM', '3 hours later'
-  maxMs?: number;        // 대사 없을 때 길이 (기본 1200)
+  audio?: string;        // '/audio/friday/01-maya.mp3' 또는 내 녹음 blob URL
+  text?: string;         // 말풍선 글자. audio만 있고 text가 없으면 '🎤 0:04' 음성 말풍선
+  caption?: string;      // 상황 자막. 예: 'Read 9:41 PM', '3 hours later'
+  maxMs?: number;        // 오디오·글자 없는 비트 길이 (기본 1200)
   reactions?: { actorId: string; action: ActionName }[]; // 같은 순간 다른 사람들 반응
 }
 
@@ -82,12 +92,28 @@ export interface Room {
   id: string;
   title: string;         // 'Friday plans'
   emoji: string;         // '🍕'
-  preview: string;       // 목록에 보일 마지막 메시지
+  preview: string;       // 바텀시트 카드의 마지막 메시지
   unread: number;
   members: Member[];     // 'me' 포함, 최대 5명
-  script: Beat[];        // 입장하면 자동 재생
+  script: Beat[];        // 입장하면 자동 재생 (첫 비트는 me의 walk_in)
   onUserMessage: Beat[][]; // 내가 보낸 n번째 메시지에 대한 반응. 끝까지 가면 마지막 걸 반복
 }
+```
+
+### B가 제공하는 함수
+
+```ts
+// src/lib/avatar.ts
+export const AVATAR_OPTIONS: { skin: string[]; hair: string[]; hairColor: string[]; eyes: string[]; outfit: string[] };
+export function randomAvatar(): AvatarConfig;
+export function avatarFaceUrl(cfg: AvatarConfig): string; // 얼굴 SVG data URI. 몸통은 각자 CSS로
+
+// src/lib/me.tsx
+export function MeProvider(props: { children: React.ReactNode }): JSX.Element;
+export function useMe(): { avatar: AvatarConfig; setAvatar(cfg: AvatarConfig): void };
+
+// src/lib/stt.ts  — 지원 안 되면 null
+export function startSTT(): { stop(): Promise<string | null> } | null;
 ```
 
 ### 화면 조립 (page.tsx, A)
@@ -96,127 +122,137 @@ export interface Room {
 const [openRoomId, setOpenRoomId] = useState<string | null>(null);
 const room = ROOMS.find((r) => r.id === openRoomId);
 
-<MeProvider>                                     {/* B */}
+<MeProvider>                                                        {/* B */}
   {room
-    ? <RoomView room={room} onBack={() => setOpenRoomId(null)} />  // A
-    : <Home rooms={ROOMS} onOpen={setOpenRoomId} />}               // B
+    ? <RoomView room={room} onBack={() => setOpenRoomId(null)} />   // A
+    : <MyRoom rooms={ROOMS} onOpen={setOpenRoomId} />}              // B (바텀시트 포함)
 </MeProvider>
 ```
 
-`useMe()` → `{ personaUrl, name, setPersona }`. RoomView는 `members`의 `'me'` 자리에 이 값을 넣는다.
-
 ### 내 메시지 흐름 (A)
 
-입력창에서 보내면 → `{ actorId: 'me', action: 'talk', line: 입력값 }` 재생 → `onUserMessage[min(n, 길이 - 1)]` 재생. API 호출 없음. VC가 무슨 말을 하든 누군가 읽고 다시 고개를 숙인다.
+1. 🎤 탭 → 녹음 시작(+ `startSTT()`가 null이 아니면 같이 시작). 다시 탭하거나 15초가 지나면 정지.
+2. `{ actorId: 'me', action: 'talk', audio: blobUrl, text: sttText ?? undefined }` 재생.
+3. `onUserMessage[min(n, 길이 - 1)]` 재생.
+
+텍스트 입력이면 `{ actorId: 'me', action: 'talk', text }`. 서버 호출은 없다. VC가 무슨 말을 하든 누군가 듣고는 다시 엎드린다.
 
 ## A 상세: 방(원탁)
 
-**레이아웃:** 상단에 ← 뒤로 + 방 이름 + "2 here"(고개 든 사람 수). 가운데에 타원형 원탁을 약간 위에서 내려다본다. **모든 자리는 테이블 먼 쪽 호에 카메라를 향해 앉는다**(그래야 모든 얼굴이 보인다). 내 자리(가운데)는 민트색 테두리. 테이블 위로는 상반신만 보인다. 하단에는 자막과 입력창("Say something…").
+**레이아웃:** 상단에 ← 뒤로 + 방 이름 + "2 watching". 가운데에 타원형 원탁을 약간 위에서 내려다본다. **모든 자리는 테이블 먼 쪽 호에 카메라를 향해 앉는다**(그래야 모든 얼굴이 보인다). 내 자리는 민트색 테두리. 테이블 위로는 상반신만 보인다. 하단에는 자막, 🎤 버튼, 텍스트 입력.
 
 **자세:**
-- `present`: 고개 들고 정면, 선명
-- `away`: 고개 숙이고(머리 기울기·약간 축소) 폰 화면 빛이 얼굴에, 흐리게
+- `watching`: 앉아서 정면, 선명
+- `away`: 팔 위에 얼굴을 묻고 엎드림, 흐리게, 가끔 💤
 - `gone`: 빈 의자만
 
 **몸짓** (CSS keyframes면 충분하다. 과장할수록 웃기다):
 
 | action | 연출 | 길이 |
 |---|---|---|
-| `look_up` | 고개 듦, 흐림 해제 | 400ms |
-| `look_down` | 고개 숙임, 폰 빛, 흐려짐 | 400ms |
-| `talk` | 통통 튀기 + 말풍선 | TTS 끝까지 |
-| `read_ignore` | `look_up` → 👀 띄우고 말한 사람 쪽으로 고개 돌려 700ms 정지 → `look_down` | 1800ms |
-| `startle_up` | 💦 + 화들짝 튀어 오르며 고개 듦 + 헐떡 | 1200ms |
+| `walk_in` | 화면 옆에서 걸어 들어와 빈자리에 앉음. `watching`인 사람만 고개를 돌려 쳐다봄 | 2000ms |
+| `sit_up` | 엎드림 → 상체 일으킴, 흐림 해제 | 500ms |
+| `slump` | 상체 숙여 팔 위로 엎드림, 흐려짐 | 500ms |
+| `talk` | 오디오 재생 + 입 움직임(볼륨 기반, 안 되면 통통) + 말풍선 | 오디오 끝까지 |
+| `read_ignore` | `sit_up` → 👀 말한 사람 쪽으로 고개 돌려 700ms → `slump` | 1800ms |
+| `startle_up` | 💦 + 화들짝 튀어 오르며 앉음 + 헐떡 | 1200ms |
 | `stand_leave` | 일어남 → 의자 뒤로 밀림 → 화면 밖으로 걸어 나감 → 빈 의자. 나머지는 `freeze` | 1800ms |
 | `cover_mouth` | 말풍선이 뜨다가 ✋ 가 입을 덮고 말풍선이 찢어짐 | 1200ms |
-| `typing_stop` | `look_up` → 말풍선 "…" → 사라짐 → `look_down` | 1600ms |
+| `typing_stop` | `sit_up` → 말풍선 "…" → 사라짐 → `slump` | 1600ms |
 | `heart` / `laugh` | 🫶 팝업 / 😂 + 뒤로 젖혀짐 | 900ms |
 | `freeze` | 그 자리에서 멈춤, 살짝 흑백 | 다음 비트까지 |
 
 **재생기 규칙:**
-- 첫 재생은 방 입장 **클릭 핸들러 안에서** 빈 발화로 TTS를 잠금 해제한 뒤 시작한다(iOS Safari).
-- `away`인 사람이 `talk` 비트를 받으면 먼저 `look_up`을 자동으로 넣는다.
-- 대사가 있으면 `utterance.onend`에서 다음으로 넘어간다. **상한 타이머를 같이 건다**: `max(1500, line.length * 60)`ms.
-- `lang = 'en-US'`. `voiceschanged`를 기다린 뒤 영어 음성을 고르고, 캐릭터별로 pitch·rate만 다르게 준다. 영어 음성이 없거나 `speechSynthesis`가 없으면 같은 타이밍으로 **자막만** 진행한다(카카오톡 인앱 브라우저 대비).
+- 방 입장 **클릭 핸들러 안에서** AudioContext를 만들거나 resume한다(iOS 자동재생 차단 해제).
+- `away`인 사람이 `talk`를 받으면 먼저 `sit_up`을 자동으로 넣는다.
+- `talk`는 오디오 `ended`에서 다음으로 넘어간다. **상한 타이머를 같이 건다**: 길이 + 1000ms(길이를 모르면 8초).
+- 오디오가 없거나 로드에 실패하면 `max(1500, text.length * 60)`ms 동안 말풍선만.
 - `reactions`는 같은 비트 안에서 동시에 재생한다.
-- 음소거 토글. 소리를 꺼도 자막만으로 이해되어야 한다.
+- 음소거 토글. 소리를 꺼도 말풍선·자막만으로 이해되어야 한다.
 
-**A 완료 기준:** 첫 방 데이터로 입장부터 끝까지 재생되고, 펀치라인(읽씹)이 입장 후 10초 안에 나오고, 내 메시지에 반응이 나온다.
+**녹음 (`recorder.ts`):**
+- 마이크 권한은 🎤 를 **처음 누를 때만** 요청한다.
+- `MediaRecorder.isTypeSupported`로 mimeType을 고른다(Chrome `audio/webm`, Safari `audio/mp4`). 최대 15초.
+- `getUserMedia`·`MediaRecorder`가 없거나 거부되면 🎤 를 숨기고 "No mic? Type instead." 토스트 + 텍스트 입력만.
+- 녹음은 blob URL로 기기 안에서만 재생한다. 서버로 보내지 않는다.
 
-## B 상세: 홈·페르소나·대본
+**A 완료 기준:** 첫 방이 입장부터 끝까지 팀원 목소리로 재생되고, 펀치라인(읽씹)이 입장 후 10초 안에 나오고, 내 음성·텍스트 메시지에 반응이 나온다.
 
-**홈:** 화면 가운데에 내 아바타가 서 있다(`<Avatar pose="stand" />`, 숨쉬기). 아래에 [📸 Make it you] [Pick a stand-in] 버튼이 나란히 있다. 하단 민트색 바텀시트(#A6F2DC 근처)가 반쯤 올라와 있고 방 목록이 보인다. 각 항목에는 이모지 + 방 이름, 멤버 얼굴 겹쳐 쌓기, 미리보기, 안 읽은 수 배지, "2 here"가 표시된다. 첫 방에만 "Open a chat 👇" 힌트를 띄운다.
+## B 상세: 마이룸·바텀시트·대본
 
-**방 대본 (`src/data/rooms.ts`):** 팀 단톡의 실제 장면을 영어로 옮긴다. 방 하나에 비트 6~8개, **펀치라인은 2~3번째 비트**. 아래는 형식 예시이고, 내용은 진짜 대화로 바꾼다.
+**아바타 (`avatar.ts`, 12:30까지):** 오픈소스 2D 아바타 라이브러리(예: DiceBear의 SVG 스타일 하나)를 쓰거나 직접 SVG 레이어를 만든다. **스타일 라이선스를 먼저 확인**한다. 얼굴만 SVG data URI로 만들고 몸통은 CSS. 이미지 생성 API는 쓰지 않는다.
+
+**마이룸:** 방 배경 안에 내 캐릭터가 서 있다(숨쉬기). 꾸미기 패널(피부색, 머리 모양, 머리 색, 눈, 옷 색)을 바꾸면 즉시 반영하고 localStorage에 저장한다. 첫 방문은 `randomAvatar()`로 시작해서 처음부터 귀엽게 보이게 한다.
+
+**바텀시트:** snap point가 있는 React 바텀시트(예: `vaul`) 또는 직접 구현. 접힘(손잡이 + 첫 카드 일부) → 반 → 전체. 방 카드에는 이모지 + 이름, **미니 원탁**(앉은 사람·엎드린 사람 작은 점이나 얼굴), 미리보기, 안 읽은 수 배지. 첫 방에만 "Open a chat 👆" 힌트.
+
+**방 대본 (`src/data/rooms.ts`):** 팀 단톡의 실제 장면을 영어로 옮긴다. 방 하나에 비트 6~8개, **펀치라인은 `walk_in` 다음 2~3번째 비트**. 아래는 형식 예시이고, 내용은 진짜 대화로 바꾼다.
 
 ```ts
 {
   id: 'friday', title: 'Friday plans', emoji: '🍕', preview: 'LEO. I SAW THAT.', unread: 3,
   members: [
-    { id: 'maya', name: 'Maya', personaUrl: '/personas/maya.webp', voice: { pitch: 1.3, rate: 1.1 }, seat: 0, startsAs: 'present' },
-    { id: 'jun',  name: 'Jun',  personaUrl: '/personas/jun.webp',  voice: { pitch: 0.9, rate: 1.0 }, seat: 1, startsAs: 'away' },
-    { id: 'me',   name: 'You',  personaUrl: '',                     voice: { pitch: 1.0, rate: 1.0 }, seat: 2, startsAs: 'present' },
-    { id: 'leo',  name: 'Leo',  personaUrl: '/personas/leo.webp',  voice: { pitch: 0.8, rate: 0.9 }, seat: 3, startsAs: 'away' },
+    { id: 'maya', name: 'Maya', avatar: MAYA, seat: 0, startsAs: 'watching' },
+    { id: 'jun',  name: 'Jun',  avatar: JUN,  seat: 1, startsAs: 'away' },
+    { id: 'me',   name: 'You',  avatar: DEFAULT, seat: 2, startsAs: 'watching' },
+    { id: 'leo',  name: 'Leo',  avatar: LEO,  seat: 3, startsAs: 'away' },
   ],
   script: [
-    { actorId: 'maya', action: 'talk', line: 'guys. friday. are we still on??' },
+    { actorId: 'me', action: 'walk_in' },
+    { actorId: 'maya', action: 'talk', audio: '/audio/friday/01-maya.mp3', text: 'guys. friday. are we still on??' },
     { actorId: 'leo', action: 'read_ignore', caption: 'Read 9:41 PM', reactions: [{ actorId: 'maya', action: 'freeze' }] },
-    { actorId: 'maya', action: 'talk', line: 'LEO. I SAW THAT.' },
+    { actorId: 'maya', action: 'talk', audio: '/audio/friday/02-maya.mp3', text: 'LEO. I SAW THAT.' },
     { actorId: 'jun', action: 'startle_up', caption: '3 hours later' },
-    { actorId: 'jun', action: 'talk', line: 'sorry i was asleep. what is friday' },
-    { actorId: 'maya', action: 'cover_mouth', line: 'you know what, forget it', caption: 'Maya unsent a message' },
+    { actorId: 'jun', action: 'talk', audio: '/audio/friday/03-jun.mp3', text: 'sorry i was asleep. what is friday' },
+    { actorId: 'maya', action: 'cover_mouth', audio: '/audio/friday/04-maya.mp3', text: 'you know what, forget it', caption: 'Maya unsent a message' },
     { actorId: 'leo', action: 'stand_leave', caption: 'Leo left the conversation',
       reactions: [{ actorId: 'maya', action: 'freeze' }, { actorId: 'jun', action: 'freeze' }] },
   ],
   onUserMessage: [
     [{ actorId: 'maya', action: 'read_ignore', caption: 'Read' }],
-    [{ actorId: 'jun', action: 'startle_up' }, { actorId: 'jun', action: 'talk', line: 'wait who said that' }],
+    [{ actorId: 'jun', action: 'startle_up' }, { actorId: 'jun', action: 'talk', audio: '/audio/friday/05-jun.mp3', text: 'wait who said that' }],
     [{ actorId: 'maya', action: 'laugh' }],
   ],
 }
 ```
 
-방 2 "Family 👨‍👩‍👧"(엄마 `typing_stop`, 아빠 `cover_mouth`)와 방 3 "Group project 😩"(`stand_leave`)는 13:30 이후, 시간이 되는 만큼.
+방 2 "Family 👨‍👩‍👧"(엄마 `typing_stop`, 아빠 `cover_mouth`)는 13:30 이후, 시간이 되는 만큼.
 
-**페르소나:**
-- 이미지 생성 API는 팀이 **유료 키**를 가진 쪽(OpenAI 또는 Google 이미지 모델). 무료 티어 키는 쓰지 않는다(입력이 학습에 쓰일 수 있음). 대시보드에 지출 상한을 건다.
-- 스타일 프롬프트는 하나로 고정한다: sticker-style cartoon head, front-facing, plain white background, same style for everyone. **13:00에 동결.** 그 전까지 A는 임시 이미지로 개발한다.
-- 동결 후 같은 프롬프트로 캐스트 페르소나와 **프리셋 6개**(실존 인물이 아니라 텍스트 프롬프트로 생성)를 만들고, 512px WebP로 줄여 13:30까지 `public/personas/`에 커밋한다. 첫 화면은 API를 0번 부른다.
-- **13:00–13:30 측정:** 배포된 Vercel에서 셀카 10장으로 지연 p50/p90과 성공률을 잰다. p90 > 20초 또는 성공률 < 80%면 더 빠른 모델·낮은 품질·작은 해상도로 바꾼다. 14:00에도 미달이면 셀카 버튼을 숨기고 스탠드인만 남긴다.
+**녹음 (13:00–13:30, 둘 다 참여 10분):** 조용한 곳에서 폰 음성 메모로 대사 한 줄당 파일 하나. 과장해서 연기할수록 좋다. 앞뒤 무음을 자르고 `public/audio/<room>/<nn>-<name>.mp3`(또는 `.m4a`)로 커밋한다.
 
-**`POST /api/persona`:**
-- 클라이언트에서 사진을 캔버스로 다시 그려 JPEG(긴 변 1024px 이하, 1MB 이하)로 보낸다. body `{ image: string }` (data URL). HEIC·큰 원본 대비.
-- 응답 `200 { personaUrl: string }` (축소한 WebP/JPEG data URL). 실패는 4xx/5xx.
-- `export const maxDuration = 60` 명시. 서버 로그·오류 리포트에 요청 본문과 이미지를 남기지 않는다.
-- IP당 분당 30회 메모리 제한은 최선 노력용이다(주 방어선은 지출 상한). 초과하면 429 → 클라이언트가 스탠드인으로 보낸다.
+**STT 도우미 (`stt.ts`, 13:30–14:00):**
+- 브라우저 내장 음성 인식(`SpeechRecognition` / `webkitSpeechRecognition`)이 있으면 쓴다. 언어는 `navigator.language`(한국 VC는 한국어로 말할 수 있다).
+- 없으면 `null`을 반환한다. `stop()`이 실패하거나 빈 결과면 `null` → A가 음성 말풍선으로 표시.
+- Chrome, iPhone Safari, Android Chrome에서 **녹음과 동시에** 돌려보고, 녹음이 무음이 되는 기기에서는 `null`을 반환하게 막는다.
 
-**Cast yourself:**
-- 진입 화면: [Use camera] [Upload photo] [Pick a stand-in] + 동의 문구 "Sent to {provider} only to draw your cartoon. We don't keep it."
-- `getUserMedia`는 기능 감지 후 사용. 없으면 업로드와 스탠드인만.
-- "Drawing you…" (재치 있는 문구 순환) → 성공하면 `setPersona(url)` → 홈 아바타와 모든 방의 내 자리가 바뀐다.
-- 25초 타임아웃·오류·429 → "Our artist is busy — pick a stand-in". 카메라 거부·없음 → "No camera? Pick a stand-in." 둘 다 프리셋 그리드로 간다. 막다른 길은 없다.
+**실시간 (14:00 체크포인트 통과 시에만, `/live/[code]`):**
+- 조건: 배포 URL에서 마이룸 + 첫 방 + 내 음성 메시지가 iPhone까지 다 됨.
+- 실시간 서비스(예: Supabase Realtime)의 presence로 `document.visibilityState`에 따라 앉음/엎드림을 동기화하고, broadcast로 텍스트 메시지를 주고받는다. 음성은 시간이 남을 때만.
+- 메인 화면에는 "Invite a friend (beta)" 링크 하나만. **14:30까지 두 기기에서 안정적으로 돌지 않으면 링크를 숨긴다.**
 
-**B 완료 기준:** 홈에서 첫 방이 열리고, 셀카 성공·실패·거부 경로가 모두 25초 안에 끝나고, 이미지 키를 빼도 홈과 방이 돌아간다.
+**B 완료 기준:** 마이룸에서 꾸민 캐릭터가 방에도 그대로 나오고, 바텀시트에서 첫 방이 열리고, 첫 방 녹음 파일이 전부 재생된다.
 
 ## 타임라인과 동기화 지점 (KST)
 
-| 시간 | A (방) | B (홈·페르소나·대본) |
+| 시간 | A (방) | B (마이룸·바텀시트·대본) |
 |---|---|---|
-| 12:05–12:20 | Next.js 스캐폴드 → push | `types.ts` + 첫 방 데이터 → push, Vercel 연결·환경변수·첫 배포 |
-| **12:20 SYNC 1** | 첫 방 데이터로 원탁 시작, 12:40까지 `Avatar` v0 push | 페르소나 프롬프트 튜닝(임시 이미지로 홈 개발) |
-| 12:20–13:30 | 원탁·자리, `look_up`/`look_down`/`talk`/`read_ignore`/`startle_up`/`stand_leave`, 자막, 재생기 | 홈 + 민트 바텀시트 + 방 목록, 13:00 프롬프트 동결 → 캐스트·프리셋 생성 → 커밋, 지연 측정 |
-| **13:30 SYNC 2** | 홈 → 방 이동 + 진짜 페르소나로 통합 확인 | 같이 확인 |
-| 13:30–14:15 | 입력창 + `onUserMessage`, 나머지 몸짓, 입장 전환, 모바일 | Cast yourself + 대비책, 방 2~3 데이터, `maxDuration`·지출 상한 |
-| **14:15 SYNC 3** | 팀 밖 1명에게 설명 없이 링크만 주고 말없이 지켜보기 | 같이 지켜보고 막힌 곳 메모 |
-| 14:15–14:45 | iPhone Safari(한국어 설정)·Android Chrome·카카오톡 인앱 수정, PDF용 스크린샷 3장 | 장애 테스트(이미지 키 제거, 네트워크 차단, 429), PDF 초안 |
+| 12:15–12:30 | Next.js 스캐폴드 → push | `types.ts` + `avatar.ts`(라이브러리·라이선스) + 첫 방 대본(텍스트) → push, Vercel 연결·첫 배포 |
+| **12:30 SYNC 1** | 첫 방 대본으로 원탁 시작(오디오 없이 말풍선만) | 마이룸 꾸미기 시작 |
+| 12:30–13:30 | 원탁·자리, 앉음/엎드림, `walk_in`·`sit_up`·`slump`·`talk`·`read_ignore`·`startle_up`·`stand_leave`, 자막 | 마이룸 + 꾸미기 + 저장, 바텀시트 + 방 카드, **13:00–13:30 대사 녹음(A도 10분 참여) → 커밋** |
+| **13:30 SYNC 2** | 마이룸 → 방, 꾸민 캐릭터 + 팀원 목소리로 통합 확인 | 같이 확인 |
+| 13:30–14:00 | 🎤 녹음 + 텍스트 입력 + `onUserMessage`, 입 움직임, 나머지 몸짓 | `stt.ts` + 기기별 시험, 방 2 대본·녹음 |
+| **14:00 체크포인트** | 계속 다듬기 | 조건 충족 → 실시간 시작 / 미충족 → QA 합류 |
+| **14:15 SYNC 3** | 팀 밖 1명에게 설명 없이 링크만 주고 말없이 지켜보기 | 같이 지켜보고 메모 |
+| 14:15–14:45 | iPhone Safari(한국어 설정)·Android Chrome·카카오톡 인앱 수정, PDF용 스크린샷 3장 | 실시간은 14:30까지 안정 못 하면 숨김, 장애 테스트(마이크 거부, 오디오 실패, 오프라인), PDF 초안 |
 | 14:45–15:15 | **main 동결.** 체크리스트 같이 확인 | PDF 확정 |
 | 15:15–15:45 | **제출** → 제출한 배포를 Production으로 고정 | |
 
 **자르기 트리거:**
 - 13:30에 원탁이 첫 방을 끝까지 재생 못 하면 → 방 1개만, 나머지 몸짓은 뺌
-- 14:00에 셀카가 측정 기준 미달이면 → 스탠드인만
-- 14:15에 방 3(그다음 방 2)이 미완성이면 → 숨김
-- **홈 + 첫 방 + 내 메시지 읽씹 반응은 끝까지 자르지 않는다**
+- 13:30에 녹음 파일이 없으면 → 말풍선만으로 진행, 녹음은 14:00까지
+- 14:00에 STT가 기기별로 불안정하면 → 음성 말풍선만
+- 14:15에 방 2가 미완성이면 → 숨김
+- **마이룸 + 첫 방(팀원 목소리) + 내 메시지 읽씹 반응은 끝까지 자르지 않는다**
 
 ## Git·배포 규칙
 
@@ -224,14 +260,9 @@ const room = ROOMS.find((r) => r.id === openRoomId);
 - 공동 파일(`types.ts`, `package.json`, `page.tsx`)은 바꾸기 전에 말로 알린다.
 - Vercel: `main` = 제출 URL. **14:45 이후 main 동결.**
 - **제출 직후** Vercel에서 제출한 배포를 Production으로 고정하고 자동 배포를 끈다. 이후 작업은 다른 브랜치의 preview에서만 한다.
-- `.env.local`은 절대 커밋하지 않는다.
+- `.env.local`은 절대 커밋하지 않는다(실시간을 할 경우에만 키가 생긴다).
 
-```bash
-# .env.local (커밋 금지)
-OPENAI_API_KEY=        # 또는 GEMINI_API_KEY — /api/persona
-```
-
-### 스캐폴드 (A, 12:05)
+### 스캐폴드 (A, 12:15)
 
 ```bash
 npx create-next-app@latest . --ts --app --src-dir --tailwind --eslint --import-alias "@/*"
@@ -249,13 +280,13 @@ rsync -a app-tmp/ ./ && rm -rf app-tmp
 | 항목 | 실패하면 |
 |---|---|
 | 새 시크릿 Chrome·iPhone Safari·Android Chrome·카카오톡 인앱에서 3초 안에 열림 | 고칠 때까지 보류 |
-| 첫 방 입장 시 소리와 함께 재생, 소리 없이도 자막으로 이해됨 | 고칠 때까지 보류 |
+| 첫 방 입장 시 팀원 목소리가 나오고, 소리 없이도 말풍선·자막으로 이해됨 | 고칠 때까지 보류 |
 | 펀치라인이 입장 후 10초 안에 나옴 | 고칠 때까지 보류 |
+| 내 음성 메시지가 녹음되고 내 캐릭터가 그 목소리로 말함(Chrome, iPhone Safari) | 해당 기기에서 텍스트 입력만 |
+| 마이크 거부·없음·인앱 브라우저에서 텍스트 입력으로 같은 반응 | 고칠 때까지 보류 |
 | 내 메시지에 읽씹 반응이 나옴 | 고칠 때까지 보류 |
-| 이미지 API가 죽어도 홈·방은 돌아감(키 제거로 확인) | 고칠 때까지 보류 |
-| 콘솔 오류 없음, 클라이언트 번들에 API 키 없음 | 고칠 때까지 보류 |
-| 셀카 성공 25초 이내, 실패·거부·429 시 스탠드인 | 셀카 숨기고 스탠드인만으로 제출 |
-| 큰 원본 사진·HEIC 업로드 성공 | 업로드 숨기고 카메라·스탠드인만 |
+| 콘솔 오류 없음, 클라이언트 번들에 키 없음 | 고칠 때까지 보류 |
+| 실시간 링크가 두 기기에서 안정적으로 동작 | 링크 숨기고 제출 |
 | 팀 밖 사람이 설명 없이 **30초 안에** 이해하고 웃음(10초는 목표치) | 첫 방 대본·힌트 문구 수정 후 재시험 |
 | 제출 링크가 고정된 Production 배포를 가리킴 | 제출 전 수정 |
 
@@ -263,5 +294,5 @@ rsync -a app-tmp/ ./ && rm -rf app-tmp
 
 ## PDF 2장 (B, 14:15–14:45 초안)
 
-- **1페이지:** 한 줄 훅 / 인사이트(채팅은 누가 있는지·읽었는지를 숨긴다 → 원탁에서는 고개를 든 사람만 대화한다) / 홈·원탁·읽씹 스크린샷 3컷(A 제공) / "90초 체험법" 3단계 + 링크·QR
-- **2페이지:** Why now(Gen Z는 아바타로 자신을 표현하고 단톡을 콘텐츠화한다, 페르소나 생성이 싸졌다) / Sora cameo·Bitmoji·Apple Persona 대비 차별점 / 로드맵(실제 메신저 연동, 대화 붙여넣기, 숏폼 에피소드 내보내기, 본인 동의 기반 캐스팅) / 팀. 데모에서 확인할 수 없는 주장은 쓰지 않는다.
+- **1페이지:** 한 줄 훅 / 인사이트(음성 메시지는 막대기 목록이고, 채팅은 누가 보고 있는지 숨긴다 → 원탁에서는 보고 있는 사람만 앉아 있고, 대화는 진짜 목소리로 한다) / 마이룸·원탁·읽씹 스크린샷 3컷(A 제공) / "90초 체험법" 3단계 + 링크·QR / "데모 속 친구들은 팀원이 녹음했고, 당신의 목소리는 진짜입니다."
+- **2페이지:** Why now(음성 메시지와 아바타 표현이 이미 일상이다) / Sora cameo·Bitmoji·Apple Persona 대비 차별점 / 로드맵(실시간 멀티유저, 실제 메신저 연동, 숏폼 에피소드 내보내기) / 팀. 데모에서 확인할 수 없는 주장은 쓰지 않는다.
