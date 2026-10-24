@@ -26,20 +26,34 @@ const BASE: Joints = {
   hipLX: 0, hipRX: 0, kneeLX: 0, kneeRX: 0,
 };
 
+/* 머리 → 어깨 → 허리로 이어지는 반쪽 윤곽선.
+   원뿔대를 쓰면 고깔처럼 보인다. 회전체(lathe)로 만들어야 Coastal World처럼
+   머리와 몸통이 하나의 곡면으로 흐른다. [높이, 반지름] */
+const BODY_PROFILE: [number, number][] = [
+  [1.72, 0.001], [1.70, 0.085], [1.665, 0.155], [1.62, 0.225], [1.565, 0.285],
+  [1.50, 0.330], [1.43, 0.357], [1.36, 0.368], [1.28, 0.365], [1.20, 0.352],
+  [1.12, 0.333], [1.03, 0.311], [0.95, 0.291], [0.87, 0.273], [0.80, 0.257],
+  [0.755, 0.245], [0.72, 0.232], [0.695, 0.205], [0.675, 0.160], [0.665, 0.090],
+  [0.662, 0.001],
+];
+
 /** 앉은 자세 공통. 원탁 비트는 전부 여기서 출발한다. */
-const SEATED = { rootY: -0.2, hipLX: 1.5, hipRX: 1.5, kneeLX: -1.5, kneeRX: -1.5 } as const;
+const R_LEG = 0.052;
+
+const SEATED = { rootY: -0.3, hipLX: 1.5, hipRX: 1.5, kneeLX: -1.5, kneeRX: -1.5 } as const;
 
 /** 포즈 프리셋. 여기에 한 줄 추가하면 새 몸짓이 생긴다. */
 const POSES: Record<PoseName, Partial<Joints>> = {
   idle: {},
   walk: {}, // 다리·팔은 useFrame에서 sin으로 덮어쓴다
+  walkAway: { rootRotY: Math.PI }, // 등을 돌리고 걷는다
   sit:     { ...SEATED, armLZ: 0.18, armRZ: 0.18 },
   sitTalk: { ...SEATED, lean: 0.2, armLX: -0.3, armRX: -0.3, armLZ: 0.25, armRZ: 0.25 },
   // 테이블에 얼굴을 묻고 엎드린다. away의 기본 자세.
   slump:   { ...SEATED, lean: 0.95, armLX: -1.55, armRX: -1.55, armLZ: 0.3, armRZ: 0.3 },
   stare:   { ...SEATED, lean: 0.12, armLZ: 0.12, armRZ: 0.12 },
   // 화들짝: 상체를 뒤로 젖히며 두 팔을 번쩍
-  startle: { ...SEATED, rootY: -0.15, lean: -0.28, armLX: -1.25, armRX: -1.25, armLZ: 0.7, armRZ: 0.7 },
+  startle: { ...SEATED, rootY: -0.2, lean: -0.28, armLX: -1.25, armRX: -1.25, armLZ: 0.7, armRZ: 0.7 },
   coverMouth: { ...SEATED, lean: 0.1, armLX: -2.3, armLZ: -0.5, armRX: -0.2, armRZ: 0.15 },
   heart:   { ...SEATED, lean: 0.12, armLX: -2.0, armLZ: -0.32, armRX: -2.0, armRZ: -0.32 },
   laugh:   { ...SEATED, lean: -0.38, armLX: -0.9, armRX: -0.9, armLZ: 0.5, armRZ: 0.5 },
@@ -111,7 +125,8 @@ export function Avatar({
     const target: Joints = { ...BASE, ...POSES[pose] };
 
     // 걷기: 다리와 팔을 교대로 스윙
-    if (pose === 'walk') {
+    const walking = pose === 'walk' || pose === 'walkAway';
+    if (walking) {
       const s = Math.sin(t * 7);
       target.hipLX = s * 0.7;
       target.hipRX = -s * 0.7;
@@ -132,9 +147,19 @@ export function Avatar({
       root.current.rotation.y = c.rootRotY;
     }
     if (torso.current) {
-      torso.current.rotation.x = c.lean;
       // 숨쉬기. 이 2px이 "살아있음"의 8할이다.
-      torso.current.position.y = Math.sin(t * 1.6) * 0.012;
+      const breathe = Math.sin(t * 1.6) * 0.012;
+      // 걸을 때 상하 바운스 + 좌우 흔들림이 없으면 미끄러지는 인형처럼 보인다.
+      // 다리를 모을 때(cos=1) 키가 커지고 벌릴 때 낮아진다.
+      const bounce = walking ? (Math.abs(Math.cos(t * 7)) - 0.5) * 0.034 : 0;
+      torso.current.position.y = breathe + bounce;
+      torso.current.rotation.x = c.lean + (walking ? 0.07 : 0);
+      torso.current.rotation.z = THREE.MathUtils.damp(
+        torso.current.rotation.z,
+        walking ? Math.sin(t * 7) * 0.055 : 0,
+        9,
+        d,
+      );
       torso.current.scale.y = 1 + Math.sin(t * 1.6) * 0.008;
     }
     if (armL.current) { armL.current.rotation.x = c.armLX; armL.current.rotation.z = -c.armLZ; }
@@ -172,133 +197,160 @@ export function Avatar({
     <meshStandardMaterial color={color} roughness={0.92} metalness={0} />
   );
 
+  // 회전체 윤곽. 한 번만 만든다.
+  const bodyPoints = useMemo(
+    () => BODY_PROFILE.map(([y, r]) => new THREE.Vector2(r, y)),
+    [],
+  );
+
+  /** 다리 한 쪽. 관절 구의 반지름을 다리와 똑같이 맞춰야 마디가 안 보인다. */
+  const leg = (
+    side: 'L' | 'R',
+    x: number,
+    toeOut: number,
+    hipRef: React.RefObject<THREE.Group | null>,
+    kneeRef: React.RefObject<THREE.Group | null>,
+  ) => (
+    // 발끝을 바깥으로 살짝 돌려야 서 있는 자세가 자연스럽다
+    <group key={side} position={[x, 0.7, 0]} rotation={[0, toeOut, 0]}>
+      <group ref={hipRef}>
+        <mesh castShadow>
+          <sphereGeometry args={[R_LEG, 16, 12]} />
+          {mat(config.legs)}
+        </mesh>
+        <mesh position={[0, -0.15, 0]} castShadow>
+          <cylinderGeometry args={[R_LEG, R_LEG, 0.3, 16, 1, true]} />
+          {mat(config.legs)}
+        </mesh>
+        <group ref={kneeRef} position={[0, -0.3, 0]}>
+          <mesh castShadow>
+            <sphereGeometry args={[R_LEG, 16, 12]} />
+            {mat(config.legs)}
+          </mesh>
+          <mesh position={[0, -0.145, 0]} castShadow>
+            <cylinderGeometry args={[R_LEG, R_LEG * 0.95, 0.29, 16, 1, true]} />
+            {mat(config.legs)}
+          </mesh>
+          {/* 발목 + 신발 */}
+          <mesh position={[0, -0.29, 0]} castShadow>
+            <sphereGeometry args={[R_LEG * 0.95, 14, 10]} />
+            {mat(config.legs)}
+          </mesh>
+          <mesh position={[0, -0.315, 0.035]} scale={[1.25, 0.75, 1.9]} castShadow>
+            <sphereGeometry args={[0.068, 18, 12]} />
+            {mat(config.shoes)}
+          </mesh>
+        </group>
+      </group>
+    </group>
+  );
+
+  /** 팔 한 쪽. 끝에 뭉툭한 손이 있어야 허수아비처럼 안 보인다. */
+  const arm = (
+    side: 'L' | 'R',
+    x: number,
+    ref: React.RefObject<THREE.Group | null>,
+  ) => (
+    <group key={side} ref={ref} position={[x, 1.2, 0.01]}>
+      <mesh castShadow>
+        <sphereGeometry args={[0.052, 14, 10]} />
+        {mat(config.skin)}
+      </mesh>
+      <mesh position={[0, -0.19, 0]} castShadow>
+        <cylinderGeometry args={[0.05, 0.045, 0.38, 16, 1, true]} />
+        {mat(config.skin)}
+      </mesh>
+      <mesh position={[0, -0.395, 0]} scale={[1, 1.15, 0.85]} castShadow>
+        <sphereGeometry args={[0.058, 16, 12]} />
+        {mat(config.skin)}
+      </mesh>
+    </group>
+  );
+
   return (
     <group ref={root}>
-      {/* 다리 — 엉덩이 pivot > 허벅지 > 무릎 pivot > 정강이 + 신발 */}
-      {([['L', -0.1, hipL, kneeL], ['R', 0.1, hipR, kneeR]] as const).map(
-        ([side, x, hipRef, kneeRef]) => (
-          <group key={side} ref={hipRef} position={[x, 0.62, 0]}>
-            <mesh position={[0, -0.155, 0]} castShadow>
-              <capsuleGeometry args={[0.05, 0.21, 4, 10]} />
-              {mat(config.legs)}
-            </mesh>
-            <group ref={kneeRef} position={[0, -0.31, 0]}>
-              <mesh position={[0, -0.155, 0]} castShadow>
-                <capsuleGeometry args={[0.05, 0.21, 4, 10]} />
-                {mat(config.legs)}
-              </mesh>
-              {/* 신발: 둥근 덩어리를 앞으로 눌러 놓은 것뿐 */}
-              <mesh position={[0, -0.3, 0.025]} scale={[1.25, 0.8, 1.7]} castShadow>
-                <sphereGeometry args={[0.065, 16, 12]} />
-                {mat(config.shoes)}
-              </mesh>
-            </group>
-          </group>
-        ),
-      )}
+      {leg('L', -0.108, 0.14, hipL, kneeL)}
+      {leg('R', 0.108, -0.14, hipR, kneeR)}
 
-      {/* 머리+몸통: 하나로 이어진 물방울. 이게 Coastal World 실루엣의 핵심이다. */}
       <group ref={torso}>
-        <mesh position={[0, 1.04, 0]} castShadow>
-          <cylinderGeometry args={[0.26, 0.17, 0.84, 24, 1, true]} />
-          {mat(config.body)}
-        </mesh>
-        <mesh position={[0, 1.46, 0]} castShadow>
-          <sphereGeometry args={[0.26, 24, 18]} />
-          {mat(config.body)}
-        </mesh>
-        {/* 허리 마감 */}
-        <mesh position={[0, 0.62, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.17, 20]} />
+        {/* 머리+어깨+몸통이 통짜 회전체 하나. z로 살짝 눌러 얼굴판 자리를 만든다. */}
+        <mesh scale={[1, 1, 0.86]} castShadow receiveShadow>
+          <latheGeometry args={[bodyPoints, 40]} />
           {mat(config.body)}
         </mesh>
 
-        {/* 팔 — 어깨에서 내려오는 국수 가락. 손은 없다. */}
-        <group ref={armL} position={[-0.235, 1.28, 0]}>
-          <mesh position={[0, -0.21, 0]} castShadow>
-            <capsuleGeometry args={[0.045, 0.33, 4, 10]} />
-            {mat(config.skin)}
-          </mesh>
-        </group>
-        <group ref={armR} position={[0.235, 1.28, 0]}>
-          <mesh position={[0, -0.21, 0]} castShadow>
-            <capsuleGeometry args={[0.045, 0.33, 4, 10]} />
-            {mat(config.skin)}
-          </mesh>
-        </group>
+        {arm('L', -0.3, armL)}
+        {arm('R', 0.3, armR)}
 
-        {/* 얼굴 — 몸통 앞에 박힌 납작한 원판. 표정은 전부 여기서 난다. */}
-        <group position={[0, 1.46, 0]}>
-          <mesh position={[0, 0, 0.115]} scale={[1, 1, 0.3]}>
-            <sphereGeometry args={[0.185, 24, 18]} />
+        {/* 얼굴 — 머리 앞면에 박힌 원판. 표정은 전부 여기서 난다. */}
+        <group position={[0, 1.345, 0]}>
+          <mesh position={[0, 0, 0.285]} scale={[1, 1, 0.2]}>
+            <sphereGeometry args={[0.263, 28, 20]} />
             {mat(config.face)}
           </mesh>
 
-          {([['L', -0.062, eyeL], ['R', 0.062, eyeR]] as const).map(([side, x, ref]) => (
-            <group key={side} ref={ref} position={[x, 0.025, 0.175]}>
-              {/* 점눈과 아치눈을 둘 다 두고 표정에 따라 토글한다 */}
+          {([['L', -0.083, eyeL], ['R', 0.083, eyeR]] as const).map(([side, x, ref]) => (
+            <group key={side} ref={ref} position={[x, 0.035, 0.345]}>
               <mesh visible={!spec.eyeArc}>
-                <capsuleGeometry args={[0.016, 0.014, 3, 8]} />
+                <capsuleGeometry args={[0.023, 0.02, 3, 10]} />
                 <meshStandardMaterial color="#2B2B3D" roughness={0.6} />
               </mesh>
-              <mesh visible={spec.eyeArc} rotation={[0, 0, 0]}>
-                <torusGeometry args={[0.028, 0.009, 6, 14, Math.PI]} />
+              <mesh visible={spec.eyeArc}>
+                <torusGeometry args={[0.04, 0.013, 6, 16, Math.PI]} />
                 <meshStandardMaterial color="#2B2B3D" roughness={0.6} />
               </mesh>
             </group>
           ))}
 
-          <mesh ref={mouth} position={[0, -0.055, 0.175]}>
-            <torusGeometry args={[0.032, 0.009, 6, 20, spec.mouthArc]} />
+          <mesh ref={mouth} position={[0, -0.078, 0.345]}>
+            <torusGeometry args={[0.045, 0.013, 6, 22, spec.mouthArc]} />
             <meshStandardMaterial color="#2B2B3D" roughness={0.6} />
           </mesh>
 
-          {/* 볼터치 */}
-          {[-0.118, 0.118].map((x) => (
-            <mesh key={x} position={[x, -0.035, 0.155]}>
-              <circleGeometry args={[0.028, 14]} />
-              <meshStandardMaterial color="#F2A0A0" transparent opacity={0.65} roughness={1} />
+          {[-0.165, 0.165].map((x) => (
+            <mesh key={x} position={[x, -0.05, 0.325]}>
+              <circleGeometry args={[0.042, 16]} />
+              <meshStandardMaterial color="#F2A0A0" transparent opacity={0.6} roughness={1} />
             </mesh>
           ))}
 
-          {/* 액세서리 — 상점에서 파는 것들 */}
+          {/* 액세서리 */}
           {config.glasses === 'shutter' && (
-            <group position={[0, 0.03, 0.19]}>
-              {[-0.085, 0.085].map((x) => (
+            <group position={[0, 0.045, 0.355]}>
+              {[-0.113, 0.113].map((x) => (
                 <group key={x} position={[x, 0, 0]}>
                   <mesh>
-                    <boxGeometry args={[0.145, 0.085, 0.015]} />
+                    <boxGeometry args={[0.2, 0.115, 0.02]} />
                     {mat(config.glassesColor ?? '#F2669E')}
                   </mesh>
-                  {[-0.022, 0.006, 0.034].map((y) => (
-                    <mesh key={y} position={[0, y, 0.012]}>
-                      <boxGeometry args={[0.145, 0.012, 0.008]} />
+                  {[-0.03, 0.008, 0.046].map((y) => (
+                    <mesh key={y} position={[0, y, 0.016]}>
+                      <boxGeometry args={[0.2, 0.016, 0.01]} />
                       <meshStandardMaterial color="#FFFFFF" roughness={0.8} />
                     </mesh>
                   ))}
                 </group>
               ))}
               <mesh>
-                <boxGeometry args={[0.05, 0.02, 0.012]} />
+                <boxGeometry args={[0.07, 0.028, 0.016]} />
                 {mat(config.glassesColor ?? '#F2669E')}
               </mesh>
-              {/* 관자놀이로 이어지는 띠 */}
-              <mesh position={[0, 0, -0.08]} rotation={[Math.PI / 2, 0, 0]}>
-                <torusGeometry args={[0.175, 0.011, 6, 20, Math.PI]} />
+              <mesh position={[0, 0, -0.1]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.86, 1]}>
+                <torusGeometry args={[0.24, 0.014, 6, 24, Math.PI]} />
                 {mat(config.glassesColor ?? '#F2669E')}
               </mesh>
             </group>
           )}
           {config.glasses === 'round' && (
-            <group position={[0, 0.03, 0.19]}>
-              {[-0.062, 0.062].map((x) => (
+            <group position={[0, 0.045, 0.355]}>
+              {[-0.085, 0.085].map((x) => (
                 <mesh key={x} position={[x, 0, 0]}>
-                  <torusGeometry args={[0.045, 0.009, 8, 20]} />
+                  <torusGeometry args={[0.062, 0.012, 8, 22]} />
                   {mat(config.glassesColor ?? '#2B2B3D')}
                 </mesh>
               ))}
               <mesh>
-                <boxGeometry args={[0.04, 0.009, 0.009]} />
+                <boxGeometry args={[0.055, 0.012, 0.012]} />
                 {mat(config.glassesColor ?? '#2B2B3D')}
               </mesh>
             </group>
@@ -307,13 +359,13 @@ export function Avatar({
 
         {/* 패니팩 */}
         {config.bag && (
-          <group position={[0, 0.72, 0]}>
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.185, 0.016, 8, 24]} />
+          <group position={[0, 0.79, 0]}>
+            <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.86, 1]}>
+              <torusGeometry args={[0.253, 0.019, 8, 28]} />
               {mat(config.bagColor ?? '#7CC5E8')}
             </mesh>
-            <mesh position={[0, -0.02, 0.165]} scale={[1.5, 0.75, 0.7]}>
-              <sphereGeometry args={[0.075, 16, 12]} />
+            <mesh position={[0, -0.025, 0.21]} scale={[1.6, 0.8, 0.7]}>
+              <sphereGeometry args={[0.085, 16, 12]} />
               {mat(config.bagColor ?? '#7CC5E8')}
             </mesh>
           </group>

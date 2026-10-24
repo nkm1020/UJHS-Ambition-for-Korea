@@ -26,6 +26,7 @@ export type FaceName = 'neutral' | 'happy' | 'shock' | 'blank' | 'sad' | 'smirk'
 export type PoseName =
   | 'idle'       // 마이룸: 서서 숨쉬기
   | 'walk'       // 걷기 (다리·팔 스윙)
+  | 'walkAway'   // 등을 돌리고 걸어나감 (방 나가기)
   | 'sit'        // watching: 원탁에 앉음
   | 'sitTalk'    // 앉아서 몸 앞으로 (말하는 중)
   | 'slump'      // away: 테이블에 엎드림
@@ -105,7 +106,12 @@ export const ACTION_POSES: Record<ActionName, PoseStep[]> = {
     { pose: 'slump', face: 'blank',   ms: 700 },
   ],
   startle_up:  [{ pose: 'startle', face: 'shock', ms: 700, emoji: '💦' }, { pose: 'sit', face: 'neutral', ms: 300 }],
-  stand_leave: [{ pose: 'sit', face: 'blank', ms: 250 }, { pose: 'walk', face: 'blank', ms: 1100 }],
+  // 일어서서 등을 돌리고 걸어나간다. A는 이 단계 동안 group position을 무대 밖으로 옮긴다.
+  stand_leave: [
+    { pose: 'sit', face: 'blank', ms: 250 },
+    { pose: 'idle', face: 'blank', ms: 300 },
+    { pose: 'walkAway', face: 'blank', ms: 1200 },
+  ],
   cover_mouth: [{ pose: 'coverMouth', face: 'shock', ms: 1100, emoji: '✋' }],
   typing_stop: [
     { pose: 'sit',   face: 'neutral', ms: 400 },

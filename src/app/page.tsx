@@ -1,91 +1,98 @@
 'use client';
 
 import { useState } from 'react';
-import { Avatar } from '@/components/avatar/Avatar';
-import { AvatarStage } from '@/components/avatar/AvatarStage';
-import { AVATAR_OPTIONS, DEFAULT_AVATAR, randomAvatar } from '@/lib/avatar';
-import { AvatarConfig, FaceName, PoseName } from '@/lib/types';
+import { MyRoom } from '@/components/MyRoom';
+import { Customizer } from '@/components/Customizer';
+import { ChatSheet, SheetSnap } from '@/components/ChatSheet';
+import { MeProvider, useMe } from '@/lib/me';
+import { ROOMS } from '@/data/rooms';
 
-const POSES: PoseName[] = ['idle', 'walk', 'sit', 'sitTalk', 'slump', 'stare', 'startle', 'coverMouth', 'heart', 'laugh'];
-const FACES: FaceName[] = ['neutral', 'happy', 'shock', 'blank', 'sad', 'smirk'];
-
-/** 임시 확인용 화면. 여기서 캐릭터가 제대로 나오면 MyRoom/Customizer로 발전시킨다. */
 export default function Page() {
-  const [cfg, setCfg] = useState<AvatarConfig>(DEFAULT_AVATAR);
-  const [pose, setPose] = useState<PoseName>('idle');
-  const [face, setFace] = useState<FaceName>('neutral');
-  const [talking, setTalking] = useState(false);
+  return (
+    <MeProvider>
+      <Shell />
+    </MeProvider>
+  );
+}
 
-  const set = <K extends keyof AvatarConfig>(k: K, v: AvatarConfig[K]) =>
-    setCfg((c) => ({ ...c, [k]: v }));
+function Shell() {
+  const { me, setAvatar } = useMe();
+  const [tab, setTab] = useState<'room' | 'chat'>('room');
+  const [snap, setSnap] = useState<SheetSnap>('closed');
+  const [customizing, setCustomizing] = useState(false);
+
+  const openChat = () => {
+    setTab('chat');
+    setCustomizing(false);
+    setSnap((s) => (s === 'closed' ? 'half' : s));
+  };
+  const openRoomTab = () => {
+    setTab('room');
+    setSnap('closed');
+  };
 
   return (
-    <main className="flex min-h-dvh flex-col bg-gradient-to-b from-sky-200 to-sky-50">
-      <div className="min-h-0 flex-1">
-        <AvatarStage spin>
-          <Avatar config={cfg} pose={pose} face={face} talking={talking} />
-          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <circleGeometry args={[2.2, 48]} />
-            <meshStandardMaterial color="#E8D9C0" roughness={1} />
-          </mesh>
-        </AvatarStage>
+    <main className="relative h-dvh overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-teal-50">
+      <MyRoom onCustomize={() => { setCustomizing(true); setSnap('closed'); setTab('room'); }} />
+
+      {/* 시트와 패널은 하단 바 위에 겹쳐 놓는다 */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[68px] top-0">
+        {customizing && (
+          <div className="absolute inset-x-0 bottom-0">
+            <Customizer
+              value={me.avatar}
+              onChange={setAvatar}
+              onClose={() => setCustomizing(false)}
+            />
+          </div>
+        )}
+        {!customizing && (
+          <ChatSheet
+            rooms={ROOMS}
+            snap={snap}
+            onSnap={(s) => { setSnap(s); setTab(s === 'closed' ? 'room' : 'chat'); }}
+            onOpenRoom={(id) => {
+              // TODO(A): RoomView로 전환 — 원탁 씬
+              console.log('open room', id);
+            }}
+          />
+        )}
       </div>
 
-      <div className="space-y-2 bg-white/80 p-3 text-xs backdrop-blur">
-        <Row label="pose">
-          {POSES.map((p) => (
-            <Chip key={p} on={pose === p} onClick={() => setPose(p)}>{p}</Chip>
-          ))}
-        </Row>
-        <Row label="face">
-          {FACES.map((f) => (
-            <Chip key={f} on={face === f} onClick={() => setFace(f)}>{f}</Chip>
-          ))}
-          <Chip on={talking} onClick={() => setTalking((t) => !t)}>talking</Chip>
-        </Row>
-        {(['body', 'skin', 'legs', 'shoes', 'face'] as const).map((slot) => (
-          <Row key={slot} label={slot}>
-            {AVATAR_OPTIONS[slot].map((c) => (
-              <button
-                key={c}
-                onClick={() => set(slot, c)}
-                className="h-7 w-7 rounded-full border-2 border-white shadow"
-                style={{ background: c }}
-                aria-label={`${slot} ${c}`}
-              />
-            ))}
-          </Row>
-        ))}
-        <Row label="extra">
-          {AVATAR_OPTIONS.glasses.map((g) => (
-            <Chip key={g} on={cfg.glasses === g} onClick={() => set('glasses', g)}>{g}</Chip>
-          ))}
-          <Chip on={cfg.bag} onClick={() => set('bag', !cfg.bag)}>bag</Chip>
-          <Chip on={false} onClick={() => setCfg(randomAvatar())}>🎲 random</Chip>
-        </Row>
-      </div>
+      {/* 하단 바 */}
+      <nav className="absolute inset-x-0 bottom-0 z-30 flex h-[68px] items-stretch border-t border-black/5 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+        <TabButton active={tab === 'room'} onClick={openRoomTab} emoji="🏠" label="마이룸" />
+        <TabButton
+          active={tab === 'chat'}
+          onClick={openChat}
+          emoji="💬"
+          label="채팅"
+          badge={ROOMS.reduce((n, r) => n + r.unread, 0)}
+        />
+      </nav>
     </main>
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="w-14 shrink-0 font-mono text-slate-400">{label}</span>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
-    </div>
-  );
-}
-
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabButton({
+  active, onClick, emoji, label, badge,
+}: {
+  active: boolean; onClick(): void; emoji: string; label: string; badge?: number;
+}) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-2.5 py-1 font-medium transition ${
-        on ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'
+      className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 transition ${
+        active ? 'text-teal-600' : 'text-slate-400'
       }`}
     >
-      {children}
+      <span className={`text-[20px] transition ${active ? 'scale-110' : 'scale-100'}`}>{emoji}</span>
+      <span className="text-[11px] font-bold">{label}</span>
+      {!!badge && badge > 0 && (
+        <span className="absolute right-[calc(50%-1.5rem)] top-2.5 rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
