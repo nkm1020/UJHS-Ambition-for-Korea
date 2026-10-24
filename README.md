@@ -39,7 +39,6 @@ Scene puts those signals back on the characters, as body language:
 1. Read one line out loud so your avatar can speak in your voice. You can skip this.
 2. Dress your character in My Room, then pull up the sheet and open **Friday plans**.
 3. Tap 🎤 and say something, or type. Then watch who leaves you on read.
-4. Got left on read? Tap **Peek · Scene+** to read with your head down. Someone sitting up may catch you.
 
 The demo rooms are scripted and voiced by the team. Your own voice is real.
 
@@ -57,10 +56,10 @@ Sources and more numbers: [`docs/research/global-market-stats.md`](docs/research
 ## Business model (plan)
 
 - **Free:** sitting and slumping, the voice round table, a starter character.
-- **Scene+ (first revenue):** signal gestures. The first one is *peek while slumped*, and it's in the demo as **Peek · Scene+**. You read without leaving a read mark, but anyone sitting up at that moment can catch you. Priced against Snapchat+ ($3.99/month).
-- **Next:** outfits and gestures, and table themes one friend buys for the whole room.
+- **First revenue: dressing up your character.** Outfits, faces and expressive gestures such as hearts and laughs. Your character sits at every table you're in, so friends see what you bought every day. 52% of US/UK Gen Z are comfortable spending up to $10 a month on avatar fashion (Roblox, 2023).
+- **Room themes:** a table theme or chairs one friend buys for the whole room, the way Discord server boosts work.
 - **Growth:** 15-second clips of a chat moment, free with a watermark.
-- **Before charging:** 10 friend groups for 14 days. At least 3 must still be talking on their own on day 14.
+- **Before opening the shop:** 10 friend groups for 14 days. At least 3 must still be talking on their own on day 14.
 
 Reasoning, risks and the test plan: [`docs/designs/scene-business-model.md`](docs/designs/scene-business-model.md).
 
