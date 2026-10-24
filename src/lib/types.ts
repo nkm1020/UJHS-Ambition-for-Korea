@@ -80,6 +80,7 @@ export interface Room {
   emoji: string;
   preview: string;
   unread: number;
+  lastActive?: number;   // 마지막 메시지가 온 지 몇 분 전인지. 채팅 목록이 이 순서로 선다
   backdrop?: string;     // 방의 정체성 색 (선택)
   kind?: 'group' | 'dm'; // 1:1 채팅이면 'dm'. 없으면 멤버 수로 판단
   members: Member[];
@@ -172,6 +173,8 @@ export interface AvatarStageProps {
   bubbles?: Record<string, StageBubble | null>;
   /** 방의 배경막 색 */
   backdrop?: string;
+  /** 방 이름. 3D 무대는 입구 문 위 명패에 쓴다 */
+  title?: string;
   /** 멤버의 입 벌림 0..1. 가볍다. 매 프레임 불러도 된다. */
   getTalkLevel: (memberId: string) => number;
   /** 말풍선 위치 보고. 선택. 없으면 자리별 기본값을 쓴다. */
@@ -182,4 +185,6 @@ export interface AvatarStandProps {
   avatar: AvatarConfig;
   /** 꾸미기 화면처럼 손가락으로 돌려볼 수 있게 */
   spin?: boolean;
+  /** 꾸미는 중: 카메라가 S자 곡선으로 줌인하고, 가로로 끌면 캐릭터가 돈다 */
+  focus?: boolean;
 }

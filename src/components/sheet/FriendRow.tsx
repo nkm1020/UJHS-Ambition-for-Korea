@@ -14,11 +14,9 @@ export function FriendRow({ friend, onOpen }: FriendRowProps) {
   const watching = friend.presence === "watching";
   return (
     <button className="chat-row friend-row" onClick={() => onOpen(friend.dmId)}>
-      <span
-        className={`head solo ${watching ? "" : "is-away"}`}
-        style={{ "--c": friend.avatar.body } as React.CSSProperties}
-        aria-hidden
-      />
+      <span className="chat-ava is-solo" aria-hidden>
+        <span className={`head ${watching ? "" : "is-away"}`} style={{ "--c": friend.avatar.body } as React.CSSProperties} />
+      </span>
       <span className="chat-body">
         <span className="chat-top">
           <strong>{friend.name}</strong>

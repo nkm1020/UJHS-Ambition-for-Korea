@@ -17,6 +17,7 @@ export const ROOMS: Room[] = [
     emoji: '🍕',
     preview: 'so are we doing this or not 💀',
     unread: 3,
+    lastActive: 0,
     members: [
       { id: 'maya', name: 'Maya', avatar: MAYA, seat: 0, startsAs: 'watching' },
       { id: 'jun',  name: 'Jun',  avatar: JUN,  seat: 1, startsAs: 'away' },
@@ -51,6 +52,7 @@ export const ROOMS: Room[] = [
     emoji: '👨‍👩‍👧',
     preview: '밥은 먹었니',
     unread: 12,
+    lastActive: 14,
     members: [
       { id: 'mom', name: 'Mom', avatar: av({ body: '#F0F0F0', legs: '#D98A8A', face: '#F0C49C' }), seat: 1, startsAs: 'watching' },
       { id: 'me',  name: 'You', avatar: DEFAULT_AVATAR, seat: 2, startsAs: 'watching' },
@@ -70,6 +72,7 @@ export const ROOMS: Room[] = [
     emoji: '💼',
     preview: 'pushing now',
     unread: 0,
+    lastActive: 190,
     members: [
       { id: 'lead', name: 'Lead', avatar: av({ body: '#3D4466', legs: '#9BB4E8', face: '#A8D8C4' }), seat: 1, startsAs: 'away' },
       { id: 'me',   name: 'You',  avatar: DEFAULT_AVATAR, seat: 2, startsAs: 'watching' },

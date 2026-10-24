@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Html } from "@react-three/drei";
+import { ContactShadows, Environment, Html, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { ACTION_POSES } from "@/lib/types";
 import type { AvatarStageProps, FaceName, PoseName, Seat as SeatNo, StageBubble, StageMember } from "@/lib/types";
 import { Avatar } from "./Avatar";
 import { TABLE_TOP_Y } from "./shape";
+import { ArchWindow, Chair, PALETTE, PendantLamp, Plant, RoomReflections } from "./furniture";
+import { floorboards, paintedWood, paneling, plaque, plaster, woodGrain } from "./textures";
 
 // First-person round table. I sit on the near side (the camera is my head);
-// everyone else sits around the far arc facing the middle. The camera walks
-// in from the door on entry, then turns toward whoever the player focuses.
+// everyone else sits around the far arc facing the middle. On entry I stand
+// in the hallway facing a closed double door; it swings open and the camera
+// walks through to my chair, then turns toward whoever the player focuses.
 
 const SEAT_R = 1.72;
 // The avatar's seated poses rest the forearms exactly on TABLE_TOP_Y and reach
@@ -21,10 +24,21 @@ const TABLE_Y = TABLE_TOP_Y - 0.03; // center of the 0.06-thick top
 const EYE_Y = 1.3;
 const HEAD_Y = 1.18; // seated head height, where the camera looks
 const ARC = THREE.MathUtils.degToRad(68); // half-spread of the far arc
-const DOOR = new THREE.Vector3(0, 1.55, 6.2);
 const MY_SEAT = new THREE.Vector3(0, EYE_Y, SEAT_R + 0.1);
 const TABLE_MIDDLE = new THREE.Vector3(0, 0.95, -0.35);
-const INTRO_MS = 2000; // the walk_in beat length in the player
+// The entrance: a wall across the back of the room with a double door in it.
+const WALL_Z = 5.4; // centre plane of the entrance wall
+const WALL_T = 0.16;
+const OPENING = { w: 1.4, h: 2.3 };
+const DOOR = new THREE.Vector3(0, 1.5, 7.6); // where I stand in the hallway
+const DOOR_LOOK = new THREE.Vector3(0, 1.75, 4); // through the doorway, high enough to read the plaque
+
+// The walk_in beat length in the player. The leaves swing first, then the
+// walk starts slow while they finish, so I never clip a door.
+const INTRO_MS = 3200;
+const DOOR_OPEN = { start: 200, end: 1150 };
+const WALK = { start: 300, end: INTRO_MS };
+const DOOR_ANGLE = THREE.MathUtils.degToRad(102);
 
 interface Placed {
   member: StageMember;
@@ -42,18 +56,55 @@ function place(members: StageMember[]): Placed[] {
   });
 }
 
-export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup = [], bubbles = {} }: AvatarStageProps) {
+export default function RoomStage3D({
+  members,
+  getTalkLevel,
+  focusId,
+  focusGroup = [],
+  bubbles = {},
+  title = "",
+}: AvatarStageProps) {
   const placed = useMemo(() => place(members), [members]);
   const me = members.find((m) => m.isMe);
+  // When the entrance started. The camera starts the clock and the door reads
+  // it, so the swing and the walk stay in step.
+  const introStart = useRef<number | null>(null);
+  const getIntroStart = useCallback(() => introStart.current, []);
+  const setIntroStart = useCallback((t: number | null) => {
+    introStart.current = t;
+  }, []);
+  const [ready, setReady] = useState(false);
 
   return (
-    <div className="stage3d">
-      <Canvas shadows dpr={[1, 1.75]} camera={{ position: DOOR.toArray(), fov: 58, near: 0.05, far: 40 }} gl={{ antialias: true }}>
+    <div className={`stage3d ${ready ? "is-ready" : ""}`}>
+      <Canvas
+        shadows
+        dpr={[1, 1.75]}
+        camera={{ position: DOOR.toArray(), fov: 58, near: 0.05, far: 40 }}
+        gl={{ antialias: true }}
+        onCreated={() => setReady(true)}
+      >
+        <color attach="background" args={["#2a2623"]} />
+        <Environment resolution={64} environmentIntensity={0.5}>
+          <RoomReflections />
+        </Environment>
         <Room />
-        <ambientLight intensity={1.1} />
-        <directionalLight position={[2.2, 5, 2.6]} intensity={2} castShadow shadow-mapSize={[1024, 1024]} />
-        <directionalLight position={[-3, 2.5, -2]} intensity={0.55} />
-        <pointLight position={[0, 2.6, 0]} intensity={6} distance={6} color="#fff1df" />
+        <Entrance title={title} getIntroStart={getIntroStart} />
+        <ambientLight intensity={0.55} />
+        <directionalLight
+          position={[2.2, 5, 2.6]}
+          intensity={1.7}
+          color="#fff3e2"
+          castShadow
+          shadow-mapSize={[1024, 1024]}
+          shadow-bias={-0.0004}
+          shadow-normalBias={0.02}
+        />
+        <directionalLight position={[-3, 2.5, -2]} intensity={0.45} color="#dfe5ff" />
+        {/* the pendant over the table */}
+        <pointLight position={[0, 2.25, 0]} intensity={7} distance={6.5} decay={1.6} color="#ffe2b8" />
+        {/* a warm sconce in the hallway so the door reads before it opens */}
+        <pointLight position={[0, 3.1, WALL_Z + 1.4]} intensity={7} distance={5} decay={1.3} color="#ffd9a8" />
         <Table />
         {placed.map((p) => (
           <Seat
@@ -69,6 +120,7 @@ export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup
           placed={placed}
           focusId={focusId ?? null}
           focusGroup={focusGroup}
+          onIntroStart={setIntroStart}
           introKey={me?.action === "walk_in" ? me.actionKey : 0}
         />
       </Canvas>
@@ -76,38 +128,201 @@ export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup
   );
 }
 
+// S-curves. The cubic is every camera move's; the gentler sine paces the walk
+// in, which covers almost six meters and would sprint through the middle on
+// the cubic.
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeInOutSine = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;
+
+type Mats = Record<string, THREE.Material>;
+const surface = (s: { map: THREE.Texture; bump: THREE.Texture }, bumpScale: number, roughness: number, side: THREE.Side = THREE.FrontSide) =>
+  new THREE.MeshStandardMaterial({ map: s.map, bumpMap: s.bump, bumpScale, roughness, side });
+
+const ROOM_R = 5.6;
+const ROOM_H = 3.5;
+
 function Room() {
+  const m: Mats = useMemo(
+    () => ({
+      floor: surface(floorboards([7, 7]), 0.8, 0.6),
+      wall: surface(plaster([10, 1.2], PALETTE.cream), 1.2, 0.95, THREE.BackSide),
+      wainscot: surface(paneling([28, 1], PALETTE.sage), 1, 0.7, THREE.BackSide),
+      trim: new THREE.MeshStandardMaterial({ color: "#f4eee3", roughness: 0.55 }),
+      ceiling: new THREE.MeshStandardMaterial({ color: "#f1ebe1", roughness: 1 }),
+    }),
+    [],
+  );
+
   return (
     <group>
-      <mesh position={[0, 2.5, 0]}>
-        <cylinderGeometry args={[5.6, 5.6, 5, 48, 1, true]} />
-        <meshStandardMaterial color="#e9e4dc" side={THREE.BackSide} roughness={0.95} />
+      <mesh position={[0, ROOM_H / 2, 0]} material={m.wall} receiveShadow>
+        <cylinderGeometry args={[ROOM_R, ROOM_R, ROOM_H, 96, 1, true]} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[5.6, 48]} />
-        <meshStandardMaterial color="#cfc7bb" roughness={1} />
+      {/* sage paneling to chair-rail height */}
+      <mesh position={[0, 0.475, 0]} material={m.wainscot} receiveShadow>
+        <cylinderGeometry args={[ROOM_R - 0.02, ROOM_R - 0.02, 0.95, 96, 1, true]} />
       </mesh>
-      {/* the door I came in through, behind me */}
-      <mesh position={[0, 1.1, 5.55]}>
-        <boxGeometry args={[1.1, 2.2, 0.06]} />
-        <meshStandardMaterial color="#141418" roughness={0.6} />
+      {/* chair rail, broken where it would cross the doorway */}
+      <group rotation={[0, THREE.MathUtils.degToRad(260), 0]}>
+        <mesh position={[0, 0.96, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.trim}>
+          <torusGeometry args={[ROOM_R - 0.03, 0.022, 8, 160, THREE.MathUtils.degToRad(340)]} />
+        </mesh>
+      </group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} material={m.floor} receiveShadow>
+        <circleGeometry args={[ROOM_R, 96]} />
       </mesh>
+      <mesh position={[0, ROOM_H, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.ceiling}>
+        <circleGeometry args={[ROOM_R, 96]} />
+      </mesh>
+      {/* three arched windows behind the far arc */}
+      {[-34, 0, 34].map((deg) => {
+        const a = THREE.MathUtils.degToRad(deg);
+        return (
+          <group key={deg} position={[Math.sin(a) * (ROOM_R - 0.08), 1.1, -Math.cos(a) * (ROOM_R - 0.08)]} rotation={[0, -a, 0]}>
+            <ArchWindow width={1.1} height={1.85} />
+          </group>
+        );
+      })}
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * 3.3, 0, -3.7]} rotation={[0, s * 0.8, 0]}>
+          <Plant height={1.5} />
+        </group>
+      ))}
+      <group position={[0, 2.3, 0]}>
+        <PendantLamp drop={ROOM_H - 2.3 - 0.27} />
+      </group>
     </group>
   );
 }
 
 function Table() {
+  const m: Mats = useMemo(
+    () => ({
+      top: surface(woodGrain([2.4, 2.4], "#cfa274", "#ad7f52"), 0.35, 0.42),
+      base: surface(woodGrain([1, 2], PALETTE.walnut.light, PALETTE.walnut.dark, true), 0.5, 0.5),
+    }),
+    [],
+  );
   return (
     <group>
-      <mesh position={[0, TABLE_Y, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[TABLE_R, TABLE_R, 0.06, 64]} />
-        <meshStandardMaterial color="#f4f1ea" roughness={0.55} />
+      <mesh position={[0, TABLE_Y, 0]} material={m.top} castShadow receiveShadow>
+        <cylinderGeometry args={[TABLE_R - 0.03, TABLE_R - 0.03, 0.06, 96]} />
       </mesh>
-      <mesh position={[0, TABLE_Y / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.12, TABLE_Y, 24]} />
-        <meshStandardMaterial color="#141418" roughness={0.5} />
+      {/* a rounded rim instead of a cut edge */}
+      <mesh position={[0, TABLE_Y, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.top} castShadow>
+        <torusGeometry args={[TABLE_R - 0.03, 0.03, 12, 160]} />
+      </mesh>
+      <mesh position={[0, TABLE_Y / 2, 0]} material={m.base} castShadow>
+        <cylinderGeometry args={[0.09, 0.13, TABLE_Y, 32]} />
+      </mesh>
+      <mesh position={[0, 0.03, 0]} material={m.base} castShadow receiveShadow>
+        <cylinderGeometry args={[0.5, 0.56, 0.06, 64]} />
       </mesh>
       <ContactShadows position={[0, 0.002, 0]} opacity={0.4} scale={7} blur={2.6} far={2.5} />
+    </group>
+  );
+}
+
+/* ── the entrance ─────────────────────────────────────────── */
+
+const LEAF = { w: OPENING.w / 2 - 0.004, h: OPENING.h - 0.01, t: 0.045 };
+
+/** One door leaf. `s` = 1 hangs on the left jamb and closes toward +x; -1 the mirror. */
+function Leaf({ s, leaf, m }: { s: 1 | -1; leaf: React.RefObject<THREE.Group | null>; m: Mats }) {
+  const cx = (s * LEAF.w) / 2;
+  const face = LEAF.t / 2 + 0.007;
+  return (
+    <group ref={leaf} position={[-s * (OPENING.w / 2), 0, WALL_Z]}>
+      <RoundedBox args={[LEAF.w, LEAF.h, LEAF.t]} radius={0.008} smoothness={2} position={[cx, LEAF.h / 2, 0]} material={m.door} />
+      {/* raised panels on both faces */}
+      {[1, -1].map((side) =>
+        [
+          [1.6, 1.0],
+          [0.62, 0.74],
+        ].map(([y, h]) => (
+          <RoundedBox
+            key={`${side}${y}`}
+            args={[LEAF.w - 0.2, h, 0.014]}
+            radius={0.006}
+            smoothness={2}
+            position={[cx, y, side * face]}
+            material={m.door}
+          />
+        )),
+      )}
+      {/* brass lever by the meeting edge */}
+      <mesh position={[s * (LEAF.w - 0.075), 1.05, face + 0.004]} rotation={[Math.PI / 2, 0, 0]} material={m.brass}>
+        <cylinderGeometry args={[0.028, 0.028, 0.012, 24]} />
+      </mesh>
+      <RoundedBox
+        args={[0.12, 0.018, 0.018]}
+        radius={0.008}
+        smoothness={2}
+        position={[s * (LEAF.w - 0.125), 1.05, face + 0.03]}
+        material={m.brass}
+      />
+    </group>
+  );
+}
+
+/** The wall I enter through, its double door, and a plaque with the room's name. */
+function Entrance({ title, getIntroStart }: { title: string; getIntroStart: () => number | null }) {
+  const leafL = useRef<THREE.Group>(null);
+  const leafR = useRef<THREE.Group>(null);
+  const m: Mats = useMemo(
+    () => ({
+      hall: surface(plaster([2.5, 1.2], "#8a8f96"), 1.2, 0.95),
+      floor: surface(floorboards([3, 3], "#8c6b4f", "#563f2d"), 0.8, 0.6),
+      door: surface(paintedWood([1, 2], "#3d6455"), 0.5, 0.45),
+      casing: surface(paintedWood([1, 3], PALETTE.cream), 0.4, 0.55),
+      brass: new THREE.MeshStandardMaterial({ color: PALETTE.brass, metalness: 0.85, roughness: 0.3 }),
+    }),
+    [],
+  );
+  const sign = useMemo(() => (title ? plaque(title) : null), [title]);
+
+  // Leaves swing into the room: the left one turns +y, the right one -y.
+  useFrame(() => {
+    const start = getIntroStart();
+    const t = start === null ? 0 : (performance.now() - start - DOOR_OPEN.start) / (DOOR_OPEN.end - DOOR_OPEN.start);
+    const a = easeInOut(THREE.MathUtils.clamp(t, 0, 1)) * DOOR_ANGLE;
+    if (leafL.current) leafL.current.rotation.y = a;
+    if (leafR.current) leafR.current.rotation.y = -a;
+  });
+
+  const side = 4 - OPENING.w / 2; // wall width either side of the opening
+  const front = WALL_Z + WALL_T / 2; // the hallway face
+  return (
+    <group>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (OPENING.w / 2 + side / 2), ROOM_H / 2, WALL_Z]} material={m.hall}>
+          <boxGeometry args={[side, ROOM_H, WALL_T]} />
+        </mesh>
+      ))}
+      <mesh position={[0, (ROOM_H + OPENING.h) / 2, WALL_Z]} material={m.hall}>
+        <boxGeometry args={[OPENING.w, ROOM_H - OPENING.h, WALL_T]} />
+      </mesh>
+      {/* hallway floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, front + 2.8]} material={m.floor}>
+        <planeGeometry args={[6, 5.6]} />
+      </mesh>
+      {/* casing around the opening */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (OPENING.w / 2 + 0.05), (OPENING.h + 0.1) / 2, front + 0.015]} material={m.casing}>
+          <boxGeometry args={[0.1, OPENING.h + 0.1, 0.03]} />
+        </mesh>
+      ))}
+      <mesh position={[0, OPENING.h + 0.05, front + 0.015]} material={m.casing}>
+        <boxGeometry args={[OPENING.w + 0.2, 0.1, 0.03]} />
+      </mesh>
+      {sign && (
+        <mesh position={[0, OPENING.h + 0.34, front + 0.006]}>
+          <planeGeometry args={[1.0, 0.25]} />
+          <meshStandardMaterial map={sign} roughness={0.4} />
+        </mesh>
+      )}
+      <Leaf s={1} leaf={leafL} m={m} />
+      <Leaf s={-1} leaf={leafR} m={m} />
     </group>
   );
 }
@@ -201,27 +416,10 @@ function Seat({
       </Html>
       <Html position={[0, 0.66, 0.42]} center zIndexRange={[30, 0]} className="html3d">
         <span hidden={gone} className={`tag3d ${member.presence === "away" && !member.action ? "is-away" : ""}`}>
+          <i className="tag-dot" aria-hidden />
           {member.name}
         </span>
       </Html>
-    </group>
-  );
-}
-
-// Sized for the avatar: the seat top is at 0.34 (its hips sit at 0.40), and the
-// back stays low and far enough behind that leaning back to laugh doesn't go
-// through it.
-function Chair() {
-  return (
-    <group>
-      <mesh position={[0, 0.31, -0.165]} castShadow>
-        <boxGeometry args={[0.6, 0.06, 0.67]} />
-        <meshStandardMaterial color="#141418" roughness={0.5} />
-      </mesh>
-      <mesh position={[0, 0.6, -0.53]} castShadow>
-        <boxGeometry args={[0.6, 0.52, 0.06]} />
-        <meshStandardMaterial color="#141418" roughness={0.5} />
-      </mesh>
     </group>
   );
 }
@@ -258,10 +456,6 @@ function Bubble3D({ bubble }: { bubble: StageBubble }) {
   );
 }
 
-// S-curve: slow out, fast through the middle, slow in. Every camera move
-// (the walk-in and every change of shot) uses it.
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
 const SHOT_MS = 1150;
 const BASE_FOV = 58;
 
@@ -296,35 +490,45 @@ function CameraRig({
   placed,
   focusId,
   focusGroup,
+  onIntroStart,
   introKey,
 }: {
   placed: Placed[];
   focusId: string | null;
   focusGroup: string[];
+  onIntroStart: (t: number | null) => void;
   introKey: number;
 }) {
-  const introStart = useRef<number | null>(null);
+  // The entrance clock starts once the scene has drawn a couple of frames,
+  // so the door's swing isn't spent behind the first shader compile.
+  const clock = useRef({ key: 0, frames: 0, start: null as number | null });
   const from = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
   const to = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
   const cur = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
   const shotStart = useRef(0);
   const shotKey = useRef("");
 
-  useEffect(() => {
-    if (introKey) introStart.current = performance.now();
-  }, [introKey]);
-
   useFrame(({ camera }) => {
     const now = performance.now();
-    const start = introStart.current;
-    const p = start === null ? 0 : Math.min(1, (now - start) / INTRO_MS);
+    const c = clock.current;
+    if (introKey && c.key !== introKey) {
+      c.key = introKey;
+      c.frames = 0;
+      c.start = null;
+      onIntroStart(null);
+    }
+    if (c.key && c.start === null && ++c.frames > 2) {
+      c.start = now;
+      onIntroStart(now);
+    }
+    const elapsed = c.start === null ? 0 : now - c.start;
 
-    if (p < 1) {
-      // walk in from the door to my chair
-      const e = easeInOut(p);
-      cur.current.pos.lerpVectors(DOOR, MY_SEAT, e);
-      cur.current.pos.y += Math.sin(p * Math.PI * 6) * 0.025 * (1 - p);
-      cur.current.look.copy(TABLE_MIDDLE);
+    if (elapsed < INTRO_MS) {
+      // stand at the door while it swings, then walk through it to my chair
+      const w = THREE.MathUtils.clamp((elapsed - WALK.start) / (WALK.end - WALK.start), 0, 1);
+      cur.current.pos.lerpVectors(DOOR, MY_SEAT, easeInOutSine(w));
+      cur.current.pos.y += Math.sin(w * Math.PI * 7) * 0.02 * Math.sin(w * Math.PI);
+      cur.current.look.lerpVectors(DOOR_LOOK, TABLE_MIDDLE, easeInOut(w));
       cur.current.fov = BASE_FOV;
       shotKey.current = "";
     } else {

@@ -30,7 +30,7 @@ export interface UserMessage {
 }
 
 const ACTION_MS: Record<ActionName, number> = {
-  walk_in: 2000,
+  walk_in: 3200, // the door opens, then the camera walks to my seat (RoomStage3D INTRO_MS)
   sit_up: 500,
   slump: 500,
   talk: 0,

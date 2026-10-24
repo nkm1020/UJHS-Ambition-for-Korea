@@ -5,13 +5,23 @@ import { canRecord, startRecording, type Recorder } from "@/lib/recorder";
 import { startSTT } from "@/lib/stt";
 import { unlockAudio } from "@/lib/player/audio";
 import type { UserMessage } from "@/lib/player/usePlayer";
-import { IconMic, IconSend, IconStop } from "@/components/icons";
+import { IconClose, IconMic, IconSend } from "@/components/icons";
 import { speakAs } from "@/lib/voice";
 
 interface ComposerProps {
   onSend: (msg: UserMessage) => void;
   voiceId?: string | null;
   nudge: boolean;
+}
+
+// A floating bar over the room. One action button changes with context:
+// the mic while the field is empty, send once there is text, and send again
+// while recording (tap to stop and send). Recording swaps the field for a
+// live readout with a way to throw the clip away.
+
+function clock(sec: number): string {
+  const s = Math.floor(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
@@ -37,16 +47,29 @@ export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
     return () => clearInterval(t);
   }, [recStartedAt]);
 
+  const reset = () => {
+    stt.current = null;
+    setRecStartedAt(null);
+    setElapsed(0);
+  };
+
   const finish = async () => {
     const r = recorder.current;
     if (!r) return;
     recorder.current = null;
     const [clip, said] = await Promise.all([r.stop(), stt.current?.stop() ?? Promise.resolve(null)]);
-    stt.current = null;
-    setRecStartedAt(null);
-    setElapsed(0);
+    reset();
     if (clip) onSend({ audioUrl: clip.url, text: said ?? undefined });
     else setToast("Didn't catch that. Try again?");
+  };
+
+  const discard = async () => {
+    const r = recorder.current;
+    if (!r) return;
+    recorder.current = null;
+    const [clip] = await Promise.all([r.stop(), stt.current?.stop()]);
+    if (clip) URL.revokeObjectURL(clip.url);
+    reset();
   };
 
   const toggleMic = async () => {
@@ -90,36 +113,61 @@ export function Composer({ onSend, voiceId = null, nudge }: ComposerProps) {
   };
 
   const recording = recStartedAt !== null;
+  const hasText = text.trim().length > 0;
+  const chip = toast
+    ? { kind: "toast", text: toast }
+    : speaking
+      ? { kind: "nudge", text: "Saying it in your voice…" }
+      : nudge && !recording
+        ? { kind: "nudge", text: micOk ? "Your turn. Tap the mic and say something." : "Your turn. Type something." }
+        : null;
 
   return (
     <div className="composer">
-      {toast && <div className="toast">{toast}</div>}
-      {speaking && <div className="nudge">Saying it in your voice…</div>}
-      {!toast && !speaking && nudge && !recording && (
-        <div className="nudge">{micOk ? "Your turn. Tap the mic and say something." : "Your turn. Type something."}</div>
+      {chip && (
+        <div key={chip.text} className={chip.kind} role="status">
+          {chip.text}
+        </div>
       )}
-      <form className="composer-row" onSubmit={submit}>
-        {micOk && (
-          <button
-            type="button"
-            className={`mic ${recording ? "is-rec" : ""}`}
-            aria-label={recording ? "Stop and send" : "Record a voice message"}
-            onClick={toggleMic}
-          >
-            {recording ? <IconStop /> : <IconMic />}
+      <form className={`composer-bar ${recording ? "is-rec" : ""}`} onSubmit={submit}>
+        {recording ? (
+          <>
+            <button type="button" className="rec-discard" aria-label="Discard recording" onClick={discard}>
+              <IconClose />
+            </button>
+            <span className="rec-readout" role="status" aria-label={`Recording, ${Math.floor(elapsed)} seconds`}>
+              <i className="rec-dot" aria-hidden />
+              <span className="num">{clock(elapsed)}</span>
+              <span className="rec-wave" aria-hidden>
+                {Array.from({ length: 9 }, (_, i) => (
+                  <i key={i} style={{ animationDelay: `${(i * 97) % 600}ms` }} />
+                ))}
+              </span>
+              <span className="rec-hint">Tap to send</span>
+            </span>
+          </>
+        ) : (
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={micOk ? "Message" : "Type a message"}
+            enterKeyHint="send"
+            aria-label="Message"
+          />
+        )}
+        {recording ? (
+          <button type="button" className="action" aria-label="Stop and send" onClick={toggleMic}>
+            <IconSend />
+          </button>
+        ) : micOk && !hasText ? (
+          <button type="button" className="action is-mic" aria-label="Record a voice message" onClick={toggleMic}>
+            <IconMic />
+          </button>
+        ) : (
+          <button type="submit" className="action" aria-label="Send" disabled={!hasText || speaking}>
+            {speaking ? <span className="mini-spinner" aria-hidden /> : <IconSend />}
           </button>
         )}
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={recording ? `Recording ${elapsed.toFixed(0)}s · tap stop to send` : micOk ? "Message" : "Type a message"}
-          disabled={recording}
-          enterKeyHint="send"
-          aria-label="Message"
-        />
-        <button type="submit" className="send" aria-label="Send" disabled={!text.trim() || recording}>
-          <IconSend />
-        </button>
       </form>
     </div>
   );

@@ -35,6 +35,19 @@ export const FRIENDS: Friend[] = [...firstSeen.values()]
   .map((x) => x.friend)
   .sort((a, b) => (a.presence === b.presence ? 0 : a.presence === "watching" ? -1 : 1));
 
+// Minutes since each 1:1 chat last moved, so DMs land between the groups in
+// the chat list instead of trailing after them.
+const DM_LAST_ACTIVE: Record<string, number> = {
+  maya: 3,
+  mom: 8,
+  soo: 41,
+  jun: 75,
+  leo: 260,
+  lead: 400,
+  sis: 1500,
+  dev: 2900,
+};
+
 function dmFor(f: Friend): Room {
   const away = f.presence === "away";
   return {
@@ -44,6 +57,7 @@ function dmFor(f: Friend): Room {
     emoji: "",
     preview: away ? "Read 2:14 PM" : "hey 👋 you there?",
     unread: away ? 0 : 1,
+    lastActive: DM_LAST_ACTIVE[f.id] ?? (away ? 600 : 30),
     members: [
       { id: f.id, name: f.name, avatar: f.avatar, seat: 0, startsAs: f.presence },
       { id: "me", name: "You", avatar: DEFAULT_AVATAR, seat: 2, startsAs: "watching" },
@@ -81,4 +95,7 @@ function dmFor(f: Friend): Room {
 
 export const DMS: Room[] = FRIENDS.map(dmFor);
 
-export const ALL_ROOMS: Room[] = [...ROOMS, ...DMS];
+/** Every chat, groups and 1:1s together, newest message first. */
+export const ALL_ROOMS: Room[] = [...ROOMS, ...DMS].sort(
+  (a, b) => (a.lastActive ?? Infinity) - (b.lastActive ?? Infinity),
+);

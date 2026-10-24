@@ -1,42 +1,48 @@
 "use client";
 
-import { useState } from "react";
 import type { AvatarConfig } from "@/lib/types";
 import { AVATAR_OPTIONS, randomAvatar } from "@/lib/avatar";
-import { AvatarStand } from "@/components/avatar";
 import { IconShuffle } from "@/components/icons";
 
-// Full-screen edit mode. The stick figure only shows a head color, so that is
-// the only option for now; the real avatar brings back the other categories
-// from AVATAR_OPTIONS. Nothing saves until Done.
+// Edit mode controls, laid over My Room. There is no second canvas: the
+// figure being edited is the one in the room, framed close by the home
+// camera, and drags pass through this layer to turn it. The stick figure
+// era only exposed the head color, so that is the only option for now; the
+// other categories in AVATAR_OPTIONS come back with the shop. Nothing saves
+// until Done.
 
 interface WardrobeProps {
-  avatar: AvatarConfig;
+  open: boolean;
+  draft: AvatarConfig;
+  onChange: (avatar: AvatarConfig) => void;
   onCancel: () => void;
-  onDone: (avatar: AvatarConfig) => void;
+  onDone: () => void;
 }
 
-export function Wardrobe({ avatar, onCancel, onDone }: WardrobeProps) {
-  const [draft, setDraft] = useState(avatar);
-
+export function Wardrobe({ open, draft, onChange, onCancel, onDone }: WardrobeProps) {
   return (
-    <div className="wardrobe" role="dialog" aria-modal="true" aria-label="Edit look">
-      <header className="modal-bar">
-        <button className="text-btn" onClick={onCancel}>
+    <div className={`wardrobe ${open ? "is-open" : ""}`} role="dialog" aria-modal="true" aria-label="Edit look" inert={!open}>
+      <header className="wardrobe-bar">
+        <button className="glass-btn" onClick={onCancel}>
           Cancel
         </button>
         <h2>Edit look</h2>
-        <button className="text-btn strong" onClick={() => onDone(draft)}>
+        <button className="glass-btn is-primary" onClick={onDone}>
           Done
         </button>
       </header>
 
-      <div className="wardrobe-stage">
-        <AvatarStand avatar={draft} spin />
-      </div>
+      <p className="wardrobe-hint" aria-hidden>
+        Drag to turn
+      </p>
 
       <section className="wardrobe-panel" aria-label="Color">
-        <h3 className="panel-label">Color</h3>
+        <div className="panel-head">
+          <h3 className="panel-label">Color</h3>
+          <button className="shuffle" onClick={() => onChange(randomAvatar())}>
+            <IconShuffle /> Shuffle
+          </button>
+        </div>
         <div className="options">
           {AVATAR_OPTIONS.body.map((c, i) => {
             const on = draft.body === c;
@@ -47,14 +53,11 @@ export function Wardrobe({ avatar, onCancel, onDone }: WardrobeProps) {
                 aria-pressed={on}
                 className={`swatch ${on ? "is-on" : ""}`}
                 style={{ "--c": c } as React.CSSProperties}
-                onClick={() => setDraft({ ...draft, body: c })}
+                onClick={() => onChange({ ...draft, body: c })}
               />
             );
           })}
         </div>
-        <button className="shuffle" onClick={() => setDraft(randomAvatar())}>
-          <IconShuffle /> Shuffle
-        </button>
       </section>
     </div>
   );

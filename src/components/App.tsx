@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { VoiceSetup } from "@/components/VoiceSetup";
 import { loadVoice, saveVoice, type SavedVoice } from "@/lib/voice";
-import { ROOMS } from "@/data/rooms";
-import { ALL_ROOMS, DMS, FRIENDS } from "@/data/social";
+import { ALL_ROOMS, FRIENDS } from "@/data/social";
 import { MeProvider } from "@/lib/me";
 import { unlockAudio } from "@/lib/player/audio";
 import { MyRoom } from "@/components/myroom/MyRoom";
@@ -29,7 +28,7 @@ export default function App() {
           {room ? (
             <RoomView key={room.id} room={room} voiceId={voice.voiceId} onBack={() => setOpenRoomId(null)} />
           ) : (
-            <MyRoom rooms={ROOMS} dms={DMS} friends={FRIENDS} visited={visited} onOpen={open} />
+            <MyRoom chats={ALL_ROOMS} friends={FRIENDS} visited={visited} onOpen={open} />
           )}
           {!voice.done && (
             <VoiceSetup

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 // Apple Maps style sheet: peek -> half -> full. Drag the header, or tap it to
-// step up. The list scrolls only when fully open.
+// step up. The list scrolls only when fully open. `hidden` slides it all the
+// way off the bottom (editing the look) and back to the snap it left from.
 
 const PEEK = 214;
 const SNAPS = [PEEK, 0.56, 0.9] as const; // px for peek, fractions of the frame after
@@ -11,10 +12,11 @@ const SNAPS = [PEEK, 0.56, 0.9] as const; // px for peek, fractions of the frame
 interface BottomSheetProps {
   title: string;
   subtitle?: string;
+  hidden?: boolean;
   children: React.ReactNode;
 }
 
-export function BottomSheet({ title, subtitle, children }: BottomSheetProps) {
+export function BottomSheet({ title, subtitle, hidden = false, children }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [frameH, setFrameH] = useState(0);
   const [snap, setSnap] = useState(0);
@@ -32,7 +34,7 @@ export function BottomSheet({ title, subtitle, children }: BottomSheetProps) {
   const heights = SNAPS.map((s, i) => (i === 0 ? s : Math.max(PEEK + 40, s * frameH)));
   const fullH = heights[2];
   const restT = fullH - heights[snap];
-  const translate = dragY ?? restT;
+  const translate = hidden ? fullH + 24 : (dragY ?? restT);
 
   const onPointerDown = (e: React.PointerEvent) => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -72,8 +74,9 @@ export function BottomSheet({ title, subtitle, children }: BottomSheetProps) {
   return (
     <div
       ref={sheetRef}
-      className={`sheet ${dragY !== null ? "is-dragging" : ""} ${snap === 2 ? "is-full" : ""}`}
+      className={`sheet ${dragY !== null ? "is-dragging" : ""} ${snap === 2 ? "is-full" : ""} ${hidden ? "is-hidden" : ""}`}
       style={{ height: fullH || "90%", transform: `translateY(${frameH ? translate : 0}px)` }}
+      inert={hidden}
     >
       <div
         className="sheet-grab"

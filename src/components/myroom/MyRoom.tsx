@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { Room } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { AvatarConfig, Room } from "@/lib/types";
 import type { Friend } from "@/data/social";
 import { useMe } from "@/lib/me";
 import { AvatarStand } from "@/components/avatar";
@@ -11,8 +11,8 @@ import { FriendRow } from "@/components/sheet/FriendRow";
 import { Wardrobe } from "./Wardrobe";
 
 interface MyRoomProps {
-  rooms: Room[];
-  dms: Room[];
+  /** Groups and 1:1s together, newest message first. */
+  chats: Room[];
   friends: Friend[];
   visited: string[];
   onOpen: (roomId: string) => void;
@@ -20,27 +20,52 @@ interface MyRoomProps {
 
 type Tab = "chats" | "friends";
 
-export function MyRoom({ rooms, dms, friends, visited, onOpen }: MyRoomProps) {
+// Editing the look happens in the room itself: the sheet drops away, the
+// camera dollies in on the figure, and the color panel rises. Leaving runs it
+// backwards; "closing" holds the sheet down until the camera is mostly out.
+type EditPhase = "off" | "on" | "closing";
+const SHEET_RETURN_MS = 480;
+
+export function MyRoom({ chats, friends, visited, onOpen }: MyRoomProps) {
   const { avatar, setAvatar } = useMe();
-  const [editing, setEditing] = useState(false);
+  const [phase, setPhase] = useState<EditPhase>("off");
+  const [draft, setDraft] = useState<AvatarConfig>(avatar);
   const [tab, setTab] = useState<Tab>("chats");
-  const firstUnvisited = rooms.find((r) => !visited.includes(r.id))?.id;
   const watchingNow = friends.filter((f) => f.presence === "watching").length;
+
+  useEffect(() => {
+    if (phase !== "closing") return;
+    const t = setTimeout(() => setPhase("off"), SHEET_RETURN_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  const startEdit = () => {
+    setDraft(avatar);
+    setPhase("on");
+  };
+  const endEdit = (save: boolean) => {
+    if (save) setAvatar(draft);
+    setPhase("closing");
+  };
 
   return (
     <div className="home">
       <div className="home-space">
-        <AvatarStand avatar={avatar} />
+        <AvatarStand avatar={phase === "on" ? draft : avatar} focus={phase === "on"} />
       </div>
 
-      <header className="home-bar">
+      <header className={`home-bar ${phase !== "off" ? "is-hidden" : ""}`} inert={phase !== "off"}>
         <span className="wordmark">Scene</span>
-        <button className="glass-btn" onClick={() => setEditing(true)}>
+        <button className="glass-btn" onClick={startEdit}>
           Edit look
         </button>
       </header>
 
-      <BottomSheet title={tab === "chats" ? "Chats" : "Friends"} subtitle={`${watchingNow} watching now`}>
+      <BottomSheet
+        title={tab === "chats" ? "Chats" : "Friends"}
+        subtitle={`${watchingNow} watching now`}
+        hidden={phase !== "off"}
+      >
         <div className="seg" role="tablist" aria-label="Show">
           <button role="tab" aria-selected={tab === "chats"} className={tab === "chats" ? "is-on" : ""} onClick={() => setTab("chats")}>
             Chats
@@ -56,32 +81,17 @@ export function MyRoom({ rooms, dms, friends, visited, onOpen }: MyRoomProps) {
         </div>
 
         {tab === "chats" ? (
-          <>
-            <h3 className="list-label">Groups</h3>
-            <div className="list">
-              {rooms.map((room) => (
-                <RoomCard
-                  key={room.id}
-                  room={room}
-                  unread={visited.includes(room.id) ? 0 : room.unread}
-                  hint={room.id === firstUnvisited && visited.length === 0}
-                  onOpen={onOpen}
-                />
-              ))}
-            </div>
-            <h3 className="list-label">Direct</h3>
-            <div className="list">
-              {dms.map((room) => (
-                <RoomCard
-                  key={room.id}
-                  room={room}
-                  unread={visited.includes(room.id) ? 0 : room.unread}
-                  hint={false}
-                  onOpen={onOpen}
-                />
-              ))}
-            </div>
-          </>
+          <div className="list">
+            {chats.map((room, i) => (
+              <RoomCard
+                key={room.id}
+                room={room}
+                unread={visited.includes(room.id) ? 0 : room.unread}
+                hint={i === 0 && visited.length === 0}
+                onOpen={onOpen}
+              />
+            ))}
+          </div>
         ) : (
           <>
             <h3 className="list-label">
@@ -96,16 +106,7 @@ export function MyRoom({ rooms, dms, friends, visited, onOpen }: MyRoomProps) {
         )}
       </BottomSheet>
 
-      {editing && (
-        <Wardrobe
-          avatar={avatar}
-          onCancel={() => setEditing(false)}
-          onDone={(next) => {
-            setAvatar(next);
-            setEditing(false);
-          }}
-        />
-      )}
+      <Wardrobe open={phase === "on"} draft={draft} onChange={setDraft} onCancel={() => endEdit(false)} onDone={() => endEdit(true)} />
     </div>
   );
 }

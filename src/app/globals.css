@@ -25,6 +25,14 @@
 
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-s: cubic-bezier(0.65, 0, 0.35, 1); /* S-curve, matches the 3D camera */
+
+  /* floating glass over the 3D rooms */
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-strong: rgba(255, 255, 255, 0.84);
+  --glass-blur: blur(22px) saturate(1.8);
+  --glass-edge: inset 0 0 0 0.5px rgba(255, 255, 255, 0.75), 0 0 0 0.5px rgba(40, 28, 16, 0.08);
+  --glass-shadow: 0 10px 28px -12px rgba(40, 28, 16, 0.38);
 
   /* used by the 2D stand-in stage */
   --mint: #34c759;
@@ -68,10 +76,8 @@ button {
 @supports (corner-shape: squircle) {
   .sheet,
   .list,
-  .wardrobe-stage,
-  .composer-row input,
+  .wardrobe-panel,
   .text-btn,
-  .glass-btn,
   .bubble3d,
   .bubble,
   .my-bubble {
@@ -80,9 +86,11 @@ button {
   .sheet {
     border-radius: calc(var(--r-sheet) * 1.45) calc(var(--r-sheet) * 1.45) 0 0;
   }
-  .list,
-  .wardrobe-stage {
+  .list {
     border-radius: calc(var(--r-group) * 1.45);
+  }
+  .wardrobe-panel {
+    border-radius: calc(30px * 1.45);
   }
 }
 
@@ -140,17 +148,29 @@ button {
   transform: scale(0.96);
 }
 
-.icon-btn {
-  width: 40px;
-  height: 40px;
+.glass-btn.is-primary {
+  background: var(--tint);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(255, 90, 54, 0.65);
+}
+
+.glass-icon {
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  transition: background 0.15s;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+  color: var(--label);
+  transition: transform 0.18s var(--ease-out), background-color 0.2s;
 }
 
-.icon-btn:active {
-  background: var(--fill);
+.glass-icon:active {
+  transform: scale(0.92);
+  background: var(--glass-strong);
 }
 
 /* ---------- home ---------- */
@@ -187,6 +207,22 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: calc(10px + env(safe-area-inset-top)) 16px 10px 20px;
+  transition: opacity 0.35s ease 0.2s, transform 0.45s var(--ease-out) 0.2s;
+}
+
+.home-bar.is-hidden {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.18s ease, transform 0.2s ease;
+}
+
+.home-space .stand2d {
+  transition: transform 1.05s var(--ease-s);
+  transform-origin: 50% 0;
+}
+
+.home-space .stand2d.is-focus {
+  transform: translateY(-4%) scale(1.5);
 }
 
 .wordmark {
@@ -216,6 +252,12 @@ button {
 
 .sheet.is-dragging {
   transition: none;
+}
+
+/* Editing the look: the sheet drops off on the same S-curve the camera zooms
+   on. Coming back uses the plain sheet ease-out above. */
+.sheet.is-hidden {
+  transition: transform 0.6s var(--ease-s);
 }
 
 .sheet-grab {
@@ -262,7 +304,7 @@ button {
   overflow-y: auto;
 }
 
-/* inset grouped list, iOS style */
+/* inset grouped list, iOS style. Groups and 1:1s share one list, newest first. */
 .list {
   overflow: hidden;
   border-radius: var(--r-group);
@@ -273,9 +315,9 @@ button {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
-  padding: 12px 16px;
+  padding: 11px 14px 11px 12px;
   text-align: left;
   transition: background 0.15s;
 }
@@ -284,7 +326,7 @@ button {
   content: "";
   position: absolute;
   top: 0;
-  left: 86px;
+  left: 76px;
   right: 0;
   height: 0.5px;
   background: var(--separator);
@@ -294,29 +336,30 @@ button {
   background: var(--fill);
 }
 
-.heads {
-  flex: none;
+/* friends as heads: sitting up = watching, face-down = away */
+.chat-ava {
   position: relative;
-  width: 56px;
-  height: 48px;
+  flex: none;
+  width: 52px;
+  height: 52px;
 }
 
 .head {
   position: absolute;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--c);
   box-shadow: 0 0 0 2px var(--surface);
-  transition: transform 0.3s var(--ease-out);
+  transition: transform 0.4s var(--ease-out), filter 0.4s, opacity 0.4s;
 }
 
 .head::after {
   /* two eyes */
   content: "";
   position: absolute;
-  left: 7px;
-  top: 10px;
+  left: 8px;
+  top: 11px;
   width: 3px;
   height: 3px;
   border-radius: 50%;
@@ -324,19 +367,19 @@ button {
   box-shadow: 9px 0 0 #1b1b20;
 }
 
-.head:nth-child(1) {
+.chat-ava .head:nth-child(1) {
   left: 0;
   top: 4px;
 }
 
-.head:nth-child(2) {
-  left: 15px;
-  top: 18px;
+.chat-ava .head:nth-child(2) {
+  left: 24px;
+  top: 4px;
 }
 
-.head:nth-child(3) {
-  left: 30px;
-  top: 4px;
+.chat-ava .head:nth-child(3) {
+  left: 12px;
+  top: 22px;
 }
 
 .head.is-away {
@@ -349,6 +392,25 @@ button {
   border-radius: 1px;
 }
 
+.chat-ava.is-solo .head {
+  left: 3px;
+  top: 3px;
+  width: 46px;
+  height: 46px;
+}
+
+.chat-ava.is-solo .head::after {
+  left: 13px;
+  top: 18px;
+  width: 4px;
+  height: 4px;
+  box-shadow: 16px 0 0 #1b1b20;
+}
+
+.chat-ava.is-solo .head.is-away {
+  transform: translateY(4px) rotate(70deg) scale(0.92);
+}
+
 .chat-body {
   flex: 1;
   min-width: 0;
@@ -357,20 +419,38 @@ button {
   gap: 2px;
 }
 
-.chat-top {
+.chat-top,
+.chat-mid {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+}
+
+.chat-top {
+  align-items: baseline;
 }
 
 .chat-top strong {
-  font-size: 17px;
+  min-width: 0;
+  font-size: 16.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.chat-time {
+  flex: none;
+  font-size: 13px;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-row.is-unread .chat-time {
+  color: var(--tint);
+  font-weight: 600;
 }
 
 .unread {
@@ -389,6 +469,7 @@ button {
 }
 
 .chat-preview {
+  min-width: 0;
   font-size: 15px;
   color: var(--label-2);
   white-space: nowrap;
@@ -396,11 +477,16 @@ button {
   text-overflow: ellipsis;
 }
 
+.chat-row.is-unread .chat-preview {
+  color: var(--label);
+}
+
 .chat-meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  margin-top: 1px;
+  font-size: 12.5px;
   color: var(--label-2);
 }
 
@@ -409,9 +495,7 @@ button {
 }
 
 .row-hint {
-  position: absolute;
-  top: 10px;
-  right: 50px;
+  margin-left: auto;
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--label);
@@ -432,16 +516,93 @@ button {
   }
 }
 
-/* ---------- wardrobe ---------- */
+/* ---------- wardrobe ----------
+   Laid over My Room while the home camera is zoomed in. The layer itself lets
+   drags through to the canvas (they turn the figure); only its controls take
+   taps. Opening, the controls arrive as the zoom lands; closing, they leave
+   first so the camera pulls out over a clean room. */
 
 .wardrobe {
   position: absolute;
   inset: 0;
   z-index: 100;
-  display: flex;
-  flex-direction: column;
-  background: #f2f2f7;
-  animation: rise 0.4s var(--ease-out) both;
+  pointer-events: none;
+}
+
+.wardrobe-bar {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 12px;
+  right: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.18s ease, transform 0.2s ease;
+}
+
+.wardrobe-bar .glass-btn:first-child {
+  justify-self: start;
+}
+
+.wardrobe-bar .glass-btn:last-child {
+  justify-self: end;
+}
+
+.wardrobe-bar h2 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.wardrobe-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 152px);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--label-2);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.wardrobe-panel {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  padding: 14px 18px 20px;
+  border-radius: 30px;
+  background: rgba(250, 248, 244, 0.86);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: var(--glass-edge), 0 22px 50px -22px rgba(40, 28, 16, 0.5);
+  transform: translateY(calc(100% + 40px));
+  transition: transform 0.32s cubic-bezier(0.5, 0, 0.75, 0);
+}
+
+.wardrobe.is-open .wardrobe-bar,
+.wardrobe.is-open .wardrobe-panel {
+  pointer-events: auto;
+}
+
+.wardrobe.is-open .wardrobe-bar {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.35s ease 0.55s, transform 0.5s var(--ease-out) 0.55s;
+}
+
+.wardrobe.is-open .wardrobe-hint {
+  opacity: 1;
+  transition: opacity 0.4s ease 1s;
+}
+
+.wardrobe.is-open .wardrobe-panel {
+  transform: none;
+  transition: transform 0.6s var(--ease-out) 0.42s;
 }
 
 @keyframes rise {
@@ -449,21 +610,6 @@ button {
     transform: translateY(28px);
     opacity: 0;
   }
-}
-
-.modal-bar {
-  flex: none;
-  height: 54px;
-  display: grid;
-  grid-template-columns: 90px 1fr 90px;
-  align-items: center;
-  padding: 0 8px;
-}
-
-.modal-bar h2 {
-  text-align: center;
-  font-size: 17px;
-  font-weight: 600;
 }
 
 .text-btn {
@@ -474,44 +620,18 @@ button {
   color: var(--tint);
 }
 
-.text-btn.strong {
-  justify-self: end;
-  font-weight: 600;
-}
-
-.wardrobe-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  margin: 0 16px;
-  overflow: hidden;
-  border-radius: var(--r-group);
-  background: var(--bg);
-}
-
-.wardrobe-stage > div {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.wardrobe-stage .stand2d {
-  position: absolute;
-  inset: auto 0 8% 0;
-}
-
-.wardrobe-panel {
-  flex: none;
+.panel-head {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px 20px calc(16px + env(safe-area-inset-bottom));
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .panel-label {
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   color: var(--label-2);
 }
 
@@ -525,7 +645,7 @@ button {
   aspect-ratio: 1;
   border-radius: 50%;
   background: var(--c);
-  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12), inset 0 -3px 6px rgba(0, 0, 0, 0.08);
   transition: transform 0.15s var(--ease-out), box-shadow 0.15s;
 }
 
@@ -536,59 +656,152 @@ button {
 .swatch.is-on {
   box-shadow:
     inset 0 0 0 0.5px rgba(0, 0, 0, 0.12),
-    0 0 0 3px #f2f2f7,
+    0 0 0 3px #faf8f4,
     0 0 0 5px var(--label);
 }
 
 .shuffle {
-  align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   padding: 4px 0;
   font-size: 15px;
+  font-weight: 600;
   color: var(--tint);
 }
 
-/* ---------- room ---------- */
+/* ---------- room ----------
+   The room runs edge to edge and every control floats over it as glass: a
+   back button, a title capsule with live presence heads, mute; at the bottom
+   Peek, my bubble and the composer. A blurred edge at the top keeps the
+   controls legible over whatever the camera is looking at. */
 
 .room {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
+  overflow: hidden;
+  background: #2a2623; /* the hallway, until the stage fades in */
 }
 
-.room-bar {
+.room-stage {
   position: absolute;
-  top: 0;
+  inset: 0;
+  overflow: hidden;
+}
+
+.room-stage::before,
+.room-stage::after {
+  content: "";
+  position: absolute;
   left: 0;
   right: 0;
-  z-index: 80;
-  height: calc(60px + env(safe-area-inset-top));
-  display: grid;
-  grid-template-columns: 48px 1fr 48px;
-  align-items: center;
-  padding: env(safe-area-inset-top) 6px 0;
-  background: rgba(242, 242, 247, 0.72);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
-  backdrop-filter: blur(24px) saturate(1.8);
-  box-shadow: 0 0.5px 0 var(--separator);
+  z-index: 30;
+  pointer-events: none;
 }
 
-.room-title {
+.room-stage::before {
+  top: 0;
+  height: calc(env(safe-area-inset-top) + 96px);
+  background: linear-gradient(to bottom, rgba(36, 26, 18, 0.22), rgba(36, 26, 18, 0));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent);
+  mask-image: linear-gradient(to bottom, #000 30%, transparent);
+}
+
+.room-stage::after {
+  bottom: 0;
+  height: calc(env(safe-area-inset-bottom) + 150px);
+  background: linear-gradient(to top, rgba(36, 26, 18, 0.26), rgba(36, 26, 18, 0));
+}
+
+.stage3d {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.45s var(--ease-out);
+}
+
+.stage3d.is-ready {
+  opacity: 1;
+}
+
+.room-top {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 12px;
+  right: 12px;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.room-pill {
+  justify-self: center;
+  min-width: 0;
+  max-width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 9px;
+  border-radius: 22px;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+}
+
+.pill-heads {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 28px;
+}
+
+.pill-heads .head {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  margin-left: -6px;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.95);
+}
+
+.pill-heads .head:first-child {
+  margin-left: 0;
+}
+
+.pill-heads .head::after {
+  left: 5px;
+  top: 8px;
+  width: 2.5px;
+  height: 2.5px;
+  box-shadow: 7.5px 0 0 #1b1b20;
+}
+
+.pill-heads .head.is-away {
+  transform: translateY(3px) rotate(70deg) scale(0.9);
+}
+
+.pill-heads .head.is-gone {
+  opacity: 0.3;
+  filter: grayscale(1);
+  transform: scale(0.7);
+}
+
+.pill-text {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  line-height: 1.25;
-  min-width: 0;
+  line-height: 1.2;
 }
 
-.room-title strong {
-  font-size: 17px;
+.pill-text strong {
+  font-size: 15px;
   font-weight: 600;
-  max-width: 100%;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -600,43 +813,34 @@ button {
   gap: 5px;
   font-size: 12px;
   color: var(--label-2);
-}
-
-.room-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--bg);
-}
-
-.stage3d {
-  position: absolute;
-  inset: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .caption {
   position: absolute;
-  top: calc(72px + env(safe-area-inset-top));
+  top: calc(env(safe-area-inset-top) + 66px);
   left: 50%;
   z-index: 60;
   padding: 7px 14px;
   border-radius: 999px;
-  background: rgba(28, 28, 30, 0.78);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  background: rgba(24, 20, 18, 0.62);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 8px 22px -12px rgba(0, 0, 0, 0.55);
   color: #fff;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: 0.005em;
   white-space: nowrap;
   transform: translateX(-50%);
-  animation: caption-in 0.35s var(--ease-out) both;
+  animation: caption-in 0.5s var(--ease-out) both;
 }
 
 @keyframes caption-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -8px);
+    filter: blur(6px);
+    transform: translate(-50%, -6px) scale(0.96);
   }
 }
 
@@ -648,7 +852,7 @@ button {
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   transform: translateY(-50%);
 }
 
@@ -658,34 +862,78 @@ button {
   animation: pop 0.45s var(--ease-out) both;
 }
 
+/* Name tags hold back until the door is open, then settle in. */
 .tag3d {
-  display: block;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
   border-radius: 999px;
-  background: rgba(28, 28, 30, 0.55);
-  color: #fff;
-  font-size: 11px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 4px 12px -6px rgba(40, 28, 16, 0.4), 0 0 0 0.5px rgba(40, 28, 16, 0.08);
+  color: var(--label);
+  font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
   transition: opacity 0.3s;
+  animation: tag-in 0.5s var(--ease-out) 1.4s backwards;
+}
+
+.tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--live);
+  transition: background-color 0.3s;
 }
 
 .tag3d.is-away {
-  opacity: 0.5;
+  opacity: 0.72;
+}
+
+.tag3d.is-away .tag-dot {
+  background: #a9a6b0;
+}
+
+@keyframes tag-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 .bubble3d,
 .bubble {
+  position: relative;
   width: max-content;
   max-width: 210px;
-  padding: 8px 13px;
+  padding: 9px 14px;
   border-radius: var(--r-bubble);
   background: var(--surface);
   color: var(--label);
   font-size: 15px;
   line-height: 1.3;
-  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.35);
-  animation: pop 0.28s var(--ease-out) both;
+  letter-spacing: -0.005em;
+  box-shadow: 0 10px 24px -12px rgba(40, 28, 16, 0.5), 0 0 0 0.5px rgba(40, 28, 16, 0.05);
+  animation: pop 0.32s var(--ease-out) both;
+  transform-origin: 50% 100%;
+}
+
+/* a short tail pointing down at the speaker */
+.bubble3d::after,
+.my-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.bubble3d::after {
+  left: calc(50% - 5.5px);
 }
 
 .bubble {
@@ -712,21 +960,43 @@ button {
   pointer-events: none;
 }
 
-.my-bubble {
+/* bottom dock: my bubble above the composer */
+.room-dock {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
-  z-index: 60;
-  max-width: 72%;
-  padding: 8px 13px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px calc(env(safe-area-inset-bottom) + 12px);
+  pointer-events: none;
+}
+
+.dock-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.my-bubble {
+  position: relative;
+  margin-left: auto;
+  max-width: 78%;
+  padding: 9px 14px;
   border-radius: var(--r-bubble);
   background: var(--tint);
   color: #fff;
   font-size: 15px;
   line-height: 1.3;
-  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.45);
-  animation: pop 0.28s var(--ease-out) both;
+  box-shadow: 0 10px 24px -10px rgba(200, 60, 30, 0.55);
+  animation: pop 0.32s var(--ease-out) both;
   transform-origin: 100% 100%;
+}
+
+.my-bubble::after {
+  right: 16px;
 }
 
 @keyframes pop {
@@ -847,60 +1117,92 @@ button {
   }
 }
 
-/* composer */
+/* composer: one floating glass bar; the action button is the mic until
+   there is text, then send. Recording swaps the field for a live readout. */
 
 .composer {
-  position: relative;
-  z-index: 80;
-  flex: none;
-  padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(242, 242, 247, 0.92);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-  box-shadow: 0 -0.5px 0 var(--separator);
-}
-
-.composer-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
+  pointer-events: auto;
 }
 
-.composer-row input {
+.composer-bar {
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 18px;
+  border-radius: 26px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+  transition: background-color 0.25s, box-shadow 0.25s, padding 0.25s var(--ease-out);
+}
+
+.composer-bar:focus-within {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--glass-edge), 0 0 0 3px rgba(255, 90, 54, 0.2), var(--glass-shadow);
+}
+
+.composer-bar input {
   flex: 1;
   min-width: 0;
-  height: 38px;
-  padding: 0 15px;
-  border: 0.5px solid rgba(60, 60, 67, 0.25);
-  border-radius: 19px;
-  background: var(--surface);
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--label);
   font-size: 17px;
   outline: 0;
 }
 
-.composer-row input::placeholder {
-  color: var(--label-3);
+.composer-bar input::placeholder {
+  color: #6e6e74;
 }
 
-.mic {
+.action {
   flex: none;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--fill);
-  color: var(--label);
-  transition: background 0.2s, transform 0.12s var(--ease-out);
-}
-
-.mic:active {
-  transform: scale(0.92);
-}
-
-.mic.is-rec {
   background: var(--tint);
   color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(255, 90, 54, 0.7);
+  transition: transform 0.15s var(--ease-out), background-color 0.2s, box-shadow 0.2s;
+}
+
+.action > * {
+  animation: icon-in 0.24s var(--ease-out) both;
+}
+
+@keyframes icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-20deg);
+  }
+}
+
+.action:active {
+  transform: scale(0.9);
+  background: var(--tint-press);
+}
+
+.action:disabled {
+  background: rgba(118, 118, 128, 0.22);
+  box-shadow: none;
+}
+
+.composer-bar.is-rec {
+  padding-left: 6px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.composer-bar.is-rec .action {
   animation: rec 1.2s ease-in-out infinite;
 }
 
@@ -910,65 +1212,134 @@ button {
   }
 }
 
-.send {
+.rec-discard {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border-radius: 50%;
+  background: var(--fill);
+  color: var(--label-2);
+  transition: transform 0.15s var(--ease-out);
+}
+
+.rec-discard:active {
+  transform: scale(0.9);
+}
+
+.rec-readout {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 4px;
+  animation: fade-in 0.2s ease both;
+}
+
+.rec-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff3b30;
+  animation: rec-blink 1s ease-in-out infinite;
+}
+
+@keyframes rec-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.rec-readout .num {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-wave {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  overflow: hidden;
+}
+
+.rec-wave i {
+  flex: none;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
   background: var(--tint);
-  color: #fff;
-  transition: background 0.2s, transform 0.12s var(--ease-out);
+  animation: bars 0.6s ease-in-out infinite alternate;
 }
 
-.send:active {
-  background: var(--tint-press);
-  transform: scale(0.92);
+.rec-hint {
+  flex: none;
+  font-size: 13px;
+  color: var(--label-2);
 }
 
-.send:disabled {
-  background: var(--fill-2);
-  color: #fff;
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
 }
 
 .nudge,
 .toast {
-  width: max-content;
   max-width: 100%;
-  margin: 0 auto 8px;
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   font-size: 13px;
-  font-weight: 500;
-  animation: rise 0.3s var(--ease-out) both;
+  font-weight: 600;
+  animation: chip-in 0.4s var(--ease-out) both;
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(8px) scale(0.97);
+  }
 }
 
 .nudge {
-  background: var(--surface);
-  box-shadow: 0 0 0 0.5px var(--separator);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), 0 6px 18px -10px rgba(40, 28, 16, 0.4);
+  color: var(--label);
 }
 
 .toast {
-  background: var(--label);
+  background: rgba(28, 28, 30, 0.86);
   color: #fff;
 }
 
-/* door: the room starts behind a closed door that swings open */
+/* door: the 2D fallback's entrance (the 3D stage walks through a real one).
+   Painted double doors with raised panels swing away into the room. */
 
 .door {
   position: absolute;
   inset: 0;
   z-index: 120;
   display: flex;
-  perspective: 1100px;
+  perspective: 900px;
   pointer-events: none;
-  animation: door-done 1.4s linear forwards;
+  animation: door-done 2s linear forwards;
 }
 
 @keyframes door-done {
   0%,
-  86% {
+  88% {
     opacity: 1;
   }
   100% {
@@ -979,10 +1350,33 @@ button {
 .door-leaf {
   position: relative;
   flex: 1;
-  background: #6b5a48;
-  box-shadow: inset 0 0 0 12px #5d4e3e;
-  animation: 1s cubic-bezier(0.65, 0, 0.25, 1) 0.3s forwards;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.14), rgba(255, 255, 255, 0.03) 40%, rgba(0, 0, 0, 0.08)),
+    #2f4b40;
+  box-shadow: inset 0 0 0 10px #2a443a;
+  animation: 1.1s var(--ease-s) 0.4s forwards;
   backface-visibility: hidden;
+}
+
+/* raised panels */
+.door-leaf::before,
+.door-leaf::after {
+  content: "";
+  position: absolute;
+  left: 17%;
+  right: 17%;
+  border-radius: 4px;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.07), inset -2px -2px 0 rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.door-leaf::before {
+  top: 8%;
+  height: 46%;
+}
+
+.door-leaf::after {
+  top: 60%;
+  height: 32%;
 }
 
 .door-leaf.l {
@@ -997,24 +1391,26 @@ button {
 
 @keyframes door-l {
   to {
-    transform: rotateY(-98deg);
+    transform: rotateY(100deg);
   }
 }
 
 @keyframes door-r {
   to {
-    transform: rotateY(98deg);
+    transform: rotateY(-100deg);
   }
 }
 
 .knob {
   position: absolute;
-  top: 50%;
-  width: 6px;
-  height: 44px;
-  margin-top: -22px;
-  border-radius: 3px;
-  background: #d9cdb6;
+  z-index: 1;
+  top: 52%;
+  width: 7px;
+  height: 46px;
+  margin-top: -23px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e3c88e, #b38a45);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 
 .door-leaf.l .knob {
@@ -1027,17 +1423,19 @@ button {
 
 .door-sign {
   position: absolute;
-  top: 30%;
+  z-index: 1;
+  top: 18%;
   left: 50%;
   transform: translateX(-50%);
-  padding: 6px 14px;
+  padding: 7px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: #f4ede0;
+  box-shadow: inset 0 0 0 2px #b8925a, 0 4px 10px rgba(0, 0, 0, 0.3);
   font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.9);
-  animation: fade-out 0.25s ease 0.25s forwards;
+  color: #2b2622;
+  animation: fade-out 0.25s ease 0.35s forwards;
 }
 
 @keyframes fade-out {
@@ -1051,8 +1449,16 @@ button {
     animation-duration: 0.01s;
   }
   .door-leaf,
-  .row-hint {
+  .row-hint,
+  .tag3d {
     animation: none;
+  }
+  .sheet.is-hidden,
+  .home-space .stand2d,
+  .wardrobe-panel,
+  .wardrobe.is-open .wardrobe-panel {
+    transition-duration: 0.01s;
+    transition-delay: 0s;
   }
 }
 
@@ -1760,26 +2166,6 @@ button {
   margin-top: 22px;
 }
 
-.head.solo {
-  position: relative;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  margin: 0 8px 0 2px;
-}
-
-.head.solo::after {
-  left: 11px;
-  top: 16px;
-  width: 4px;
-  height: 4px;
-  box-shadow: 13px 0 0 #1b1b20;
-}
-
-.head.solo.is-away {
-  transform: translateY(4px) rotate(70deg) scale(0.92);
-}
-
 .away-dot {
   display: inline-block;
   width: 7px;
@@ -1787,11 +2173,6 @@ button {
   border-radius: 50%;
   background: var(--label-3);
   flex: none;
-}
-
-.friend-row + .friend-row::before,
-.chat-row + .chat-row::before {
-  left: 72px;
 }
 
 .row-action {
