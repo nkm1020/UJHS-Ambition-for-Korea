@@ -112,30 +112,28 @@ npm run dev
 
 `http://localhost:3000` → 마이룸에서 꾸미기 → 바텀시트에서 "Friday plans" → 원탁. 첫 방 대본은 `src/data/rooms.ts`에 있다.
 
-## 진짜 아바타로 바꿔 끼우기 (`StickFigure` → `Avatar`)
+## 진짜 아바타 연결 (완료: `StickFigure` → `Avatar`)
 
-`RoomStage3D`·`HomeStage3D`의 `<StickFigure>` 자리에 `<Avatar>`(`src/components/avatar/Avatar.tsx`)를 넣는다. 입력은 같다.
+마이룸·꾸미기(`HomeStage3D`)와 원탁(`RoomStage3D`)은 이제 `<Avatar>`(`src/components/avatar/Avatar.tsx`)를 그린다. `StickFigure.tsx`와 `src/lib/motion/engine.ts`는 더 이상 쓰이지 않는다.
 
 ```tsx
-<Avatar
-  config={member.avatar}       // color 대신 꾸미기 값 전체
-  pose={pose}
-  face={face}                  // ACTION_POSES 단계의 face. 없으면 away는 "blank", 나머지 "neutral"
-  seed={member.seat + 1}
-  talkLevel={talkLevel}        // 0..1, 매 프레임 읽는다
-  lookYaw={lookYaw}            // headYaw와 같은 규칙(+ = 캐릭터의 왼쪽). 머리와 몸통이 한 덩어리라 상체째 돈다
-/>
-// 마이룸: <Avatar config={avatar} pose="idle" face="happy" seed={7} />
+// 원탁
+<Avatar config={member.avatar} pose={pose} face={face} seed={member.seat + 1} talkLevel={talkLevel} lookYaw={lookYaw} />
+// 마이룸
+<Avatar config={avatar} pose="idle" face="happy" seed={7} />
 ```
 
-- **관절 각도는 motion engine이 아니라 `Avatar` 안의 포즈표를 쓴다.** 엔진 각도는 막대 인형 기준이라 콩 모양 몸에 넣으면 팔이 몸을 뚫는다. 포즈 이름(`PoseName`)만 넘기면 된다.
-- **크기가 막대 인형과 다르다.** 원탁 숫자를 이렇게 맞추면 앉은 포즈의 팔이 테이블 위에 정확히 눕는다(이 값으로 RoomStage3D에서 확인함).
+- `face`는 `ACTION_POSES` 단계의 face. 동작이 없으면 away는 `"blank"`, 나머지는 `"neutral"`.
+- `talkLevel`은 매 프레임 읽는 0..1. `lookYaw`는 엔진의 headYaw와 같은 규칙(+ = 캐릭터의 왼쪽)이고, 머리와 몸통이 한 덩어리라 상체째 돈다.
+- **관절 각도는 motion engine이 아니라 `Avatar` 안의 포즈표를 쓴다.** 엔진 각도는 막대 인형 기준이라 콩 모양 몸에 넣으면 팔이 몸을 뚫는다. 포즈 이름(`PoseName`)만 넘긴다.
 
-| | StickFigure 기준 | Avatar 기준 |
+**원탁 치수를 바꿀 때 지킬 것.** 앉은 포즈의 팔뚝은 정확히 이 높이·거리에 눕도록 역산돼 있다.
+
+| | 값 | 코드 |
 |---|---|---|
-| 테이블 윗면 | 0.63 (`TABLE_Y` 0.6) | **0.62** = `TABLE_TOP_Y` (`TABLE_Y` 0.59) |
-| 의자 윗면 | 0.43 | **0.34** (엉덩이 0.40) |
-| 테이블 가장자리 ↔ 아바타 중심 | 0.77 (`SEAT_R` 1.72) | **약 0.25** (`SEAT_R` ≈ 1.2) |
-| 앉은 머리 꼭대기 | — | 1.46 (말풍선 `Html` y=1.72는 그대로 OK) |
+| 테이블 윗면 | 0.62 | `TABLE_TOP_Y` (`shape.ts`) → `TABLE_Y = TABLE_TOP_Y - 0.03` |
+| 테이블 가장자리 ↔ 아바타 중심 | 0.25 | `TABLE_R = SEAT_R - 0.25` (`SEAT_R` 1.72는 그대로 → 카메라 구도 유지) |
+| 의자 윗면 / 등받이 | 0.34 / 아바타 뒤 0.5, 높이 0.86까지 | 뒤로 젖혀 웃어도(`laugh`) 등받이를 뚫지 않는 위치 |
+| 앉은 머리 꼭대기 | 1.46 | 말풍선 `Html` y=1.72는 그대로 |
 
 - 모든 포즈·표정은 `/preview`에서 확인할 수 있다.

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import type { AvatarStandProps } from "@/lib/types";
-import { StickFigure } from "./StickFigure";
+import { Avatar } from "./Avatar";
 
 // My Room: the avatar standing in a small, quiet room. The bottom sheet
 // covers the lower fifth of the screen, so the camera aims below the figure
@@ -84,7 +84,7 @@ export default function HomeStage3D({ avatar, spin = false }: AvatarStandProps) 
       <directionalLight position={[2.6, 4.5, 2.2]} intensity={1.9} castShadow shadow-mapSize={[1024, 1024]} />
       <directionalLight position={[-3, 2.2, 1.5]} intensity={0.45} />
       <Room />
-      <StickFigure pose="idle" color={avatar.body} seed={7} />
+      <Avatar config={avatar} pose="idle" face="happy" seed={7} />
       <ContactShadows position={[0, 0.006, 0]} opacity={0.35} scale={4} blur={2.4} far={2} />
     </Canvas>
   );

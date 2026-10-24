@@ -5,16 +5,19 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { ACTION_POSES } from "@/lib/types";
-import type { AvatarStageProps, PoseName, Seat as SeatNo, StageBubble, StageMember } from "@/lib/types";
-import { StickFigure } from "./StickFigure";
+import type { AvatarStageProps, FaceName, PoseName, Seat as SeatNo, StageBubble, StageMember } from "@/lib/types";
+import { Avatar } from "./Avatar";
+import { TABLE_TOP_Y } from "./shape";
 
 // First-person round table. I sit on the near side (the camera is my head);
 // everyone else sits around the far arc facing the middle. The camera walks
 // in from the door on entry, then turns toward whoever the player focuses.
 
-const TABLE_R = 0.95;
-const TABLE_Y = 0.6;
 const SEAT_R = 1.72;
+// The avatar's seated poses rest the forearms exactly on TABLE_TOP_Y and reach
+// about 0.25 forward, so the top sits there and its edge hugs every seat.
+const TABLE_R = SEAT_R - 0.25;
+const TABLE_Y = TABLE_TOP_Y - 0.03; // center of the 0.06-thick top
 const EYE_Y = 1.3;
 const HEAD_Y = 1.18; // seated head height, where the camera looks
 const ARC = THREE.MathUtils.degToRad(68); // half-spread of the far arc
@@ -129,7 +132,7 @@ function Seat({
   const { member, pos, rotY } = placed;
   const group = useRef<THREE.Group>(null);
   const leave = useRef(0);
-  const [step, setStep] = useState<{ pose: PoseName; emoji?: string } | null>(null);
+  const [step, setStep] = useState<{ pose: PoseName; face?: FaceName; emoji?: string } | null>(null);
   const talkLevel = useCallback(() => getTalkLevel(member.id), [getTalkLevel, member.id]);
 
   // Walk through the action's pose steps whenever a new action starts.
@@ -141,7 +144,7 @@ function Seat({
     let timer: ReturnType<typeof setTimeout> | undefined;
     const run = () => {
       const s = steps[i];
-      setStep({ pose: s.pose, emoji: s.emoji ?? FX_EMOJI[action] });
+      setStep({ pose: s.pose, face: s.face, emoji: s.emoji ?? FX_EMOJI[action] });
       if (s.ms > 0 && i < steps.length - 1) {
         timer = setTimeout(() => {
           i += 1;
@@ -169,6 +172,7 @@ function Seat({
   const gone = member.presence === "gone" && member.action !== "stand_leave";
   const rest: PoseName = member.presence === "away" ? "slump" : "sit";
   const pose: PoseName = member.action && step ? step.pose : rest;
+  const face: FaceName = (member.action && step?.face) || (member.presence === "away" ? "blank" : "neutral");
   const emoji = member.action ? step?.emoji : undefined;
 
   // Watching members turn to whoever is acting; "me" sits where the camera is.
@@ -183,7 +187,7 @@ function Seat({
   return (
     <group ref={group} position={pos} rotation={[0, rotY, 0]} visible={!gone}>
       <Chair />
-      <StickFigure pose={pose} color={member.avatar.body} seed={member.seat + 1} talkLevel={talkLevel} lookYaw={lookYaw} />
+      <Avatar config={member.avatar} pose={pose} face={face} seed={member.seat + 1} talkLevel={talkLevel} lookYaw={lookYaw} />
       <Html position={[0, 1.72, 0]} center zIndexRange={[40, 0]} className="html3d">
         <div className="above" hidden={gone}>
           {emoji && <span className="fx3d">{emoji}</span>}
@@ -199,15 +203,18 @@ function Seat({
   );
 }
 
+// Sized for the avatar: the seat top is at 0.34 (its hips sit at 0.40), and the
+// back stays low and far enough behind that leaning back to laugh doesn't go
+// through it.
 function Chair() {
   return (
-    <group position={[0, 0, -0.18]}>
-      <mesh position={[0, 0.4, 0.12]} castShadow>
-        <boxGeometry args={[0.6, 0.06, 0.5]} />
+    <group>
+      <mesh position={[0, 0.31, -0.165]} castShadow>
+        <boxGeometry args={[0.6, 0.06, 0.67]} />
         <meshStandardMaterial color="#141418" roughness={0.5} />
       </mesh>
-      <mesh position={[0, 0.85, -0.12]} castShadow>
-        <boxGeometry args={[0.6, 0.85, 0.06]} />
+      <mesh position={[0, 0.6, -0.53]} castShadow>
+        <boxGeometry args={[0.6, 0.52, 0.06]} />
         <meshStandardMaterial color="#141418" roughness={0.5} />
       </mesh>
     </group>
