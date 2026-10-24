@@ -3,6 +3,7 @@
 //
 //   VOICE_PROVIDER=elevenlabs  + ELEVENLABS_API_KEY   (hosted instant voice clone)
 //   VOICE_PROVIDER=sovits      + SOVITS_URL           (self-hosted GPT-SoVITS voice_server.py)
+//                                + SOVITS_KEY           (its VOICE_KEY, sent as x-voice-key)
 //
 // Unset means "not configured": the app keeps working with text bubbles.
 
@@ -16,6 +17,12 @@ export function provider(): Provider {
 }
 
 const EL = "https://api.elevenlabs.io/v1";
+
+// The self-hosted server is reachable from the internet through a tunnel, so
+// it only answers callers that send its shared key.
+function sovitsKey(): Record<string, string> {
+  return process.env.SOVITS_KEY ? { "x-voice-key": process.env.SOVITS_KEY } : {};
+}
 
 export async function enroll(audio: Blob, text: string, lang: string): Promise<string> {
   const p = provider();
@@ -39,7 +46,7 @@ export async function enroll(audio: Blob, text: string, lang: string): Promise<s
     form.append("file", audio, "voice.webm");
     form.append("text", text);
     form.append("lang", lang);
-    const res = await fetch(`${process.env.SOVITS_URL}/enroll`, { method: "POST", body: form });
+    const res = await fetch(`${process.env.SOVITS_URL}/enroll`, { method: "POST", headers: sovitsKey(), body: form });
     if (!res.ok) throw new Error(`sovits enroll ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const json = (await res.json()) as { voice_id?: string };
     if (!json.voice_id) throw new Error("sovits enroll: no voice_id");
@@ -61,7 +68,7 @@ export async function speak(voiceId: string, text: string): Promise<Response> {
   if (p === "sovits") {
     return fetch(`${process.env.SOVITS_URL}/speak`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...sovitsKey() },
       body: JSON.stringify({ voice_id: voiceId, text, lang }),
     });
   }
