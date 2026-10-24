@@ -90,6 +90,14 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 Without a key both still work: the room shows a written summary and Ari answers with a fallback line.
 
+Friends' lines in "Friday plans" and Ari's replies are spoken by OpenAI text-to-speech (`gpt-4o-mini-tts`, one voice per character, set in `src/app/api/tts/route.ts`). Scripted lines are generated once and cached by the CDN:
+
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+Without it the friends' lines show as bubbles.
+
 Voice cloning is off unless you set one provider:
 
 | Variable | Use |
@@ -108,7 +116,7 @@ Voice cloning is off unless you set one provider:
 
 | Path | What |
 |---|---|
-| `src/app/` | Entry page and the `/api/voice`, `/api/summary` and `/api/agent` routes |
+| `src/app/` | Entry page and the `/api/voice`, `/api/tts`, `/api/summary` and `/api/agent` routes |
 | `src/components/myroom/` | My Room and the wardrobe |
 | `src/components/sheet/` | Apple Maps-style bottom sheet, room cards, friends |
 | `src/components/room/` | Round table, bubbles, mic and text composer |

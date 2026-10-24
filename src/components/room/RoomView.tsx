@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CatchUp, Room, StageAnchor } from "@/lib/types";
 import { useMe } from "@/lib/me";
 import { usePlayer, type UserMessage } from "@/lib/player/usePlayer";
 import { createAgentChat, fetchCatchUp, replyBeats } from "@/lib/ai";
 import { setMuted } from "@/lib/player/audio";
+import { speakLine, withVoices } from "@/lib/tts";
 import { AvatarStage, STAGE_MODE } from "@/components/avatar";
 import { defaultAnchor } from "@/components/avatar/seatLayout";
 import { IconBack, IconSound } from "@/components/icons";
@@ -25,7 +26,9 @@ interface RoomViewProps {
 
 export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
   const { avatar } = useMe();
-  const player = usePlayer(room, avatar);
+  // friends speak their lines out loud (OpenAI TTS); bubbles if that's off
+  const voiced = useMemo(() => withVoices(room), [room]);
+  const player = usePlayer(voiced, avatar);
   const { start, stop } = player;
   const [anchors, setAnchors] = useState<Record<string, StageAnchor>>({});
   const [muted, setMutedState] = useState(false);
@@ -70,7 +73,13 @@ export function RoomView({ room, voiceId, onBack }: RoomViewProps) {
       player.send(msg);
       return;
     }
-    const beats = agent.reply(msg.text).then((reply) => replyBeats(agentId, reply));
+    // Ari keeps "typing" until both the reply and its voice are ready.
+    const beats = agent.reply(msg.text).then(async (reply) => {
+      const out = replyBeats(agentId, reply);
+      const line = out.find((b) => b.action === "talk" && b.text);
+      if (line?.text) line.audio = (await speakLine(agentId, line.text)) ?? undefined;
+      return out;
+    });
     player.send(msg, { actorId: agentId, beats });
   };
 
