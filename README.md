@@ -116,7 +116,7 @@ Voice cloning is off unless you set one provider:
 | `src/components/VoiceSetup.tsx` | First-run voice setup popup |
 | `src/lib/player/` | Beat player, Web Audio playback, talk level |
 | `src/lib/motion/` | Pose and joint motion engine |
-| `src/data/` | Demo rooms, friends and 1:1 chats |
+| `src/data/` | Demo room, friends and the AI friend Ari |
 
 ## Docs
 
