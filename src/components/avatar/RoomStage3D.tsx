@@ -24,8 +24,6 @@ const ARC = THREE.MathUtils.degToRad(68); // half-spread of the far arc
 const DOOR = new THREE.Vector3(0, 1.55, 6.2);
 const MY_SEAT = new THREE.Vector3(0, EYE_Y, SEAT_R + 0.1);
 const TABLE_MIDDLE = new THREE.Vector3(0, 0.95, -0.35);
-// Scene+ peek: head down on my arms, eyes just over the table edge.
-const PEEK_EYE = new THREE.Vector3(0, TABLE_TOP_Y + 0.2, SEAT_R - 0.05);
 const INTRO_MS = 2000; // the walk_in beat length in the player
 
 interface Placed {
@@ -44,7 +42,7 @@ function place(members: StageMember[]): Placed[] {
   });
 }
 
-export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup = [], bubbles = {}, peek = false }: AvatarStageProps) {
+export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup = [], bubbles = {} }: AvatarStageProps) {
   const placed = useMemo(() => place(members), [members]);
   const me = members.find((m) => m.isMe);
 
@@ -71,7 +69,6 @@ export default function RoomStage3D({ members, getTalkLevel, focusId, focusGroup
           placed={placed}
           focusId={focusId ?? null}
           focusGroup={focusGroup}
-          peek={peek}
           introKey={me?.action === "walk_in" ? me.actionKey : 0}
         />
       </Canvas>
@@ -180,10 +177,8 @@ function Seat({
   const gone = member.presence === "gone" && member.action !== "stand_leave";
   const rest: PoseName = member.presence === "away" ? "slump" : "sit";
   const pose: PoseName = member.action && step ? step.pose : rest;
-  const cue = member.cue ?? null;
-  const face: FaceName =
-    (member.action && step?.face) || cue?.face || (member.presence === "away" ? "blank" : "neutral");
-  const emoji = member.action ? step?.emoji : cue?.emoji;
+  const face: FaceName = (member.action && step?.face) || (member.presence === "away" ? "blank" : "neutral");
+  const emoji = member.action ? step?.emoji : undefined;
 
   // Watching members turn to whoever is acting; "me" sits where the camera is.
   const lookSeat = member.lookAt;
@@ -200,11 +195,7 @@ function Seat({
       <Avatar config={member.avatar} pose={pose} face={face} seed={member.seat + 1} talkLevel={talkLevel} lookYaw={lookYaw} />
       <Html position={[0, 1.72, 0]} center zIndexRange={[40, 0]} className="html3d">
         <div className="above" hidden={gone}>
-          {emoji && (
-            <span key={member.action ? member.actionKey : cue?.key} className="fx3d">
-              {emoji}
-            </span>
-          )}
+          {emoji && <span className="fx3d">{emoji}</span>}
           {bubble && <Bubble3D bubble={bubble} />}
         </div>
       </Html>
@@ -286,17 +277,8 @@ function headOf(p: Placed): THREE.Vector3 {
 }
 
 // One person: stay in my seat and turn to them. Two or more: lean back and
-// widen until everyone in the beat fits. Peeking keeps the same aim from just
-// over the table edge.
-function shotFor(targets: Placed[], peek: boolean): Shot {
-  const shot = seatedShot(targets);
-  if (!peek) return shot;
-  const look = shot.look.clone();
-  look.y = Math.max(look.y, HEAD_Y);
-  return { pos: PEEK_EYE.clone(), look, fov: Math.max(shot.fov, BASE_FOV) };
-}
-
-function seatedShot(targets: Placed[]): Shot {
+// widen until everyone in the beat fits.
+function shotFor(targets: Placed[]): Shot {
   if (targets.length === 0) return { pos: MY_SEAT.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV };
   if (targets.length === 1) return { pos: MY_SEAT.clone(), look: headOf(targets[0]), fov: BASE_FOV - 6 };
   const heads = targets.map(headOf);
@@ -314,13 +296,11 @@ function CameraRig({
   placed,
   focusId,
   focusGroup,
-  peek,
   introKey,
 }: {
   placed: Placed[];
   focusId: string | null;
   focusGroup: string[];
-  peek: boolean;
   introKey: number;
 }) {
   const introStart = useRef<number | null>(null);
@@ -329,7 +309,6 @@ function CameraRig({
   const cur = useRef<Shot>({ pos: DOOR.clone(), look: TABLE_MIDDLE.clone(), fov: BASE_FOV });
   const shotStart = useRef(0);
   const shotKey = useRef("");
-  const shotMs = useRef(SHOT_MS);
 
   useEffect(() => {
     if (introKey) introStart.current = performance.now();
@@ -351,18 +330,15 @@ function CameraRig({
     } else {
       const ids = focusGroup.length > 0 ? focusGroup : focusId && focusId !== "me" ? [focusId] : [];
       const targets = placed.filter((x) => ids.includes(x.member.id) && x.member.presence !== "gone");
-      const key = (peek ? "peek>" : "") + targets.map((t) => `${t.member.id}:${t.member.presence}`).join("|");
+      const key = targets.map((t) => `${t.member.id}:${t.member.presence}`).join("|");
       if (key !== shotKey.current) {
-        // new shot: tween from wherever the camera is now. Putting my head
-        // down or popping it back up is quicker than turning it.
-        const ducking = key.startsWith("peek>") !== shotKey.current.startsWith("peek>");
+        // new shot: tween from wherever the camera is now
         shotKey.current = key;
-        shotMs.current = ducking ? (peek ? 650 : 420) : SHOT_MS;
         from.current = { pos: cur.current.pos.clone(), look: cur.current.look.clone(), fov: cur.current.fov };
-        to.current = shotFor(targets, peek);
+        to.current = shotFor(targets);
         shotStart.current = now;
       }
-      const e = easeInOut(Math.min(1, (now - shotStart.current) / shotMs.current));
+      const e = easeInOut(Math.min(1, (now - shotStart.current) / SHOT_MS));
       cur.current.pos.lerpVectors(from.current.pos, to.current.pos, e);
       cur.current.look.lerpVectors(from.current.look, to.current.look, e);
       cur.current.fov = from.current.fov + (to.current.fov - from.current.fov) * e;
